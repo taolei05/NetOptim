@@ -20,7 +20,9 @@
 
 ## 截图
 
-<!-- 添加应用截图 -->
+| ![截图1](screenshots/screenshot-1.png) | ![截图2](screenshots/screenshot-2.png) |
+|:---:|:---:|
+| ![截图3](screenshots/screenshot-3.png) | ![截图4](screenshots/screenshot-4.png) |
 
 ## 安装
 
