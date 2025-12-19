@@ -18,34 +18,32 @@ fn get_hosts_path() -> PathBuf {
 pub fn is_admin() -> bool {
     #[cfg(target_os = "windows")]
     {
-        use std::ptr::null_mut;
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::Security::{
+            GetTokenInformation, OpenProcessToken, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+        };
+        use windows::Win32::System::Threading::GetCurrentProcess;
+
         unsafe {
-            let mut handle = null_mut();
-            let result = windows_sys::Win32::Security::OpenProcessToken(
-                windows_sys::Win32::System::Threading::GetCurrentProcess(),
-                windows_sys::Win32::Security::TOKEN_QUERY,
-                &mut handle,
-            );
-            if result == 0 {
+            let mut handle = Default::default();
+            if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut handle).is_err() {
                 return false;
             }
 
-            let mut elevation =
-                windows_sys::Win32::Security::TOKEN_ELEVATION { TokenIsElevated: 0 };
-            let mut size =
-                std::mem::size_of::<windows_sys::Win32::Security::TOKEN_ELEVATION>() as u32;
+            let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
+            let mut size = std::mem::size_of::<TOKEN_ELEVATION>() as u32;
 
-            let result = windows_sys::Win32::Security::GetTokenInformation(
+            let result = GetTokenInformation(
                 handle,
-                windows_sys::Win32::Security::TokenElevation,
-                &mut elevation as *mut _ as *mut _,
+                TokenElevation,
+                Some(&mut elevation as *mut _ as *mut _),
                 size,
                 &mut size,
             );
 
-            windows_sys::Win32::Foundation::CloseHandle(handle);
+            let _ = CloseHandle(handle);
 
-            result != 0 && elevation.TokenIsElevated != 0
+            result.is_ok() && elevation.TokenIsElevated != 0
         }
     }
 
@@ -104,16 +102,13 @@ pub fn write_host_entry(domain: &str, ip: &str) -> Result<(), AppError> {
     #[cfg(not(target_os = "windows"))]
     {
         write_with_sudo(&hosts_path, &new_content)?;
+        return Ok(());
     }
 
     #[cfg(target_os = "windows")]
-    {
-        return Err(AppError::PermissionError(
-            "请以管理员身份运行程序".to_string(),
-        ));
-    }
-
-    Ok(())
+    return Err(AppError::PermissionError(
+        "请以管理员身份运行程序".to_string(),
+    ));
 }
 
 /// 使用管理员权限写入文件 (macOS/Linux)
@@ -268,14 +263,11 @@ pub fn remove_host_entry(domain: &str) -> Result<(), AppError> {
     #[cfg(not(target_os = "windows"))]
     {
         write_with_sudo(&hosts_path, &new_content)?;
+        return Ok(());
     }
 
     #[cfg(target_os = "windows")]
-    {
-        return Err(AppError::PermissionError(
-            "请以管理员身份运行程序".to_string(),
-        ));
-    }
-
-    Ok(())
+    return Err(AppError::PermissionError(
+        "请以管理员身份运行程序".to_string(),
+    ));
 }
