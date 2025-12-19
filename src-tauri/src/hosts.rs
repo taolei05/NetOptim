@@ -18,33 +18,7 @@ fn get_hosts_path() -> PathBuf {
 pub fn is_admin() -> bool {
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::Foundation::CloseHandle;
-        use windows::Win32::Security::{
-            GetTokenInformation, OpenProcessToken, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
-        };
-        use windows::Win32::System::Threading::GetCurrentProcess;
-
-        unsafe {
-            let mut handle = Default::default();
-            if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut handle).is_err() {
-                return false;
-            }
-
-            let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
-            let mut size = std::mem::size_of::<TOKEN_ELEVATION>() as u32;
-
-            let result = GetTokenInformation(
-                handle,
-                TokenElevation,
-                Some(&mut elevation as *mut _ as *mut _),
-                size,
-                &mut size,
-            );
-
-            let _ = CloseHandle(handle);
-
-            result.is_ok() && elevation.TokenIsElevated != 0
-        }
+        is_elevated::is_elevated()
     }
 
     // macOS/Linux: 返回 true，写入时会自动请求权限
