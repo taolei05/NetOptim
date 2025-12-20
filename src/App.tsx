@@ -20,14 +20,13 @@ import {
   ScrollArea,
   IconButton,
   Dialog,
-  Separator,
   DropdownMenu,
   Tabs,
   Switch,
   Select,
   Table,
   AlertDialog,
-  Tooltip,
+  HoverCard,
 } from "@radix-ui/themes";
 import {
   MagnifyingGlassIcon,
@@ -823,24 +822,32 @@ function App() {
             <Text size="2" weight="bold">{t("presets")}</Text>
           </Flex>
           <Flex gap="2" align="center">
-            <Tooltip content={t("export")}>
-              <IconButton size="1" variant="ghost" onClick={() => handleExport("presets")}>
-                <DownloadIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={t("import")}>
-              <IconButton size="1" variant="ghost" onClick={() => { setImportType("presets"); setImportDialogOpen(true); }}>
-                <UploadIcon />
-              </IconButton>
-            </Tooltip>
+            <HoverCard.Root>
+              <HoverCard.Trigger>
+                <IconButton size="1" variant="ghost" onClick={() => handleExport("presets")}>
+                  <DownloadIcon />
+                </IconButton>
+              </HoverCard.Trigger>
+              <HoverCard.Content size="1">
+                <Text size="1">{t("export")}</Text>
+              </HoverCard.Content>
+            </HoverCard.Root>
+            <HoverCard.Root>
+              <HoverCard.Trigger>
+                <IconButton size="1" variant="ghost" onClick={() => { setImportType("presets"); setImportDialogOpen(true); }}>
+                  <UploadIcon />
+                </IconButton>
+              </HoverCard.Trigger>
+              <HoverCard.Content size="1">
+                <Text size="1">{t("import")}</Text>
+              </HoverCard.Content>
+            </HoverCard.Root>
             <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
-              <Tooltip content={t("add_preset")}>
-                <Dialog.Trigger>
-                  <IconButton size="1" variant="soft">
-                    <PlusIcon />
-                  </IconButton>
-                </Dialog.Trigger>
-              </Tooltip>
+              <Dialog.Trigger>
+                <IconButton size="1" variant="soft" title={t("add_preset")}>
+                  <PlusIcon />
+                </IconButton>
+              </Dialog.Trigger>
               <Dialog.Content maxWidth="400px">
                 <Dialog.Title>{t("add_preset")}</Dialog.Title>
                 <Flex direction="column" gap="3" mt="3">
@@ -928,73 +935,91 @@ function App() {
 
         {/* Results table */}
         <Card style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <Flex mb="2" gap="4">
-            <Text size="2" weight="bold" style={{ flex: 2 }}>{t("ip_address")}</Text>
-            <Text size="2" weight="bold" style={{ width: 80, textAlign: "center" }}>{t("latency")}</Text>
-            <Text size="2" weight="bold" style={{ flex: 1 }}>{t("location")}</Text>
-            <Text size="2" weight="bold" style={{ width: 60, textAlign: "center" }}>{t("cdn")}</Text>
-          </Flex>
-          <Separator size="4" mb="2" />
           <ScrollArea style={{ flex: 1 }}>
-            <Flex direction="column" gap="1">
-              {results.map((r) => (
-                <Flex
-                  key={r.ip}
-                  align="center"
-                  p="2"
-                  gap="2"
-                  style={{
-                    borderRadius: "var(--radius-2)",
-                    cursor: "pointer",
-                    background: selectedIp === r.ip ? "var(--accent-4)" : undefined,
-                  }}
-                  onClick={() => setSelectedIp(r.ip)}
-                >
-                  <Text size="2" style={{ flex: 2, fontFamily: "monospace" }}>{r.ip}</Text>
-                  <Box style={{ width: 80, textAlign: "center" }}>
-                    {r.latency !== null ? (
-                      <Badge color={r.latency < 100 ? "green" : r.latency < 300 ? "yellow" : "red"}>
-                        {r.latency} ms
-                      </Badge>
-                    ) : (
-                      <Badge color="gray">{t("timeout")}</Badge>
-                    )}
-                  </Box>
-                  <Text size="1" color="gray" style={{ flex: 1 }}>{r.location || "-"}</Text>
-                  <Box style={{ width: 60, textAlign: "center" }}>
-                    {r.is_cdn && <Badge color="blue">CDN</Badge>}
-                  </Box>
-                  <Tooltip content={t("add_to_blacklist")}>
-                    <IconButton
-                      size="1"
-                      variant="ghost"
-                      color="red"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToBlacklist(r.ip, currentDomain, r.latency === null ? "timeout" : undefined);
-                      }}
-                    >
-                      <CrossCircledIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip content={t("ip_details")}>
-                    <IconButton
-                      size="1"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleGetIpDetails(r.ip);
-                      }}
-                    >
-                      <EyeOpenIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Flex>
-              ))}
-              {results.length === 0 && !loading && (
-                <Text size="2" color="gray" align="center" mt="4">{t("no_results")}</Text>
-              )}
-            </Flex>
+            <Table.Root>
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell style={{ textAlign: "center" }}>{t("latency")}</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("location")}</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell style={{ textAlign: "center" }}>{t("cdn")}</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {results.map((r) => (
+                  <Table.Row
+                    key={r.ip}
+                    style={{
+                      cursor: "pointer",
+                      background: selectedIp === r.ip ? "var(--accent-4)" : undefined,
+                    }}
+                    onClick={() => setSelectedIp(r.ip)}
+                  >
+                    <Table.Cell>
+                      <Text style={{ fontFamily: "monospace" }}>{r.ip}</Text>
+                    </Table.Cell>
+                    <Table.Cell style={{ textAlign: "center" }}>
+                      {r.latency !== null ? (
+                        <Badge color={r.latency < 100 ? "green" : r.latency < 300 ? "yellow" : "red"}>
+                          {r.latency} ms
+                        </Badge>
+                      ) : (
+                        <Badge color="gray">{t("timeout")}</Badge>
+                      )}
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Text size="1" color="gray">{r.location || "-"}</Text>
+                    </Table.Cell>
+                    <Table.Cell style={{ textAlign: "center" }}>
+                      {r.is_cdn && <Badge color="blue">CDN</Badge>}
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Flex gap="2">
+                        <HoverCard.Root>
+                          <HoverCard.Trigger>
+                            <IconButton
+                              size="1"
+                              variant="ghost"
+                              color="red"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToBlacklist(r.ip, currentDomain, r.latency === null ? "timeout" : undefined);
+                              }}
+                            >
+                              <CrossCircledIcon />
+                            </IconButton>
+                          </HoverCard.Trigger>
+                          <HoverCard.Content size="1">
+                            <Text size="1">{t("add_to_blacklist")}</Text>
+                          </HoverCard.Content>
+                        </HoverCard.Root>
+                        <HoverCard.Root>
+                          <HoverCard.Trigger>
+                            <IconButton
+                              size="1"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleGetIpDetails(r.ip);
+                              }}
+                            >
+                              <EyeOpenIcon />
+                            </IconButton>
+                          </HoverCard.Trigger>
+                          <HoverCard.Content size="1">
+                            <Text size="1">{t("ip_details")}</Text>
+                          </HoverCard.Content>
+                        </HoverCard.Root>
+                      </Flex>
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table.Root>
+            {results.length === 0 && !loading && (
+              <Text size="2" color="gray" align="center" style={{ padding: "var(--space-4)" }}>{t("no_results")}</Text>
+            )}
           </ScrollArea>
         </Card>
 
@@ -1077,7 +1102,7 @@ function App() {
                 <Table.Row>
                   <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>Domain</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell width="80px"></Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -1144,7 +1169,7 @@ function App() {
                   <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("latency")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>Action</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell width="80px"></Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -1170,11 +1195,16 @@ function App() {
                       </Badge>
                     </Table.Cell>
                     <Table.Cell>
-                      <Tooltip content={t("rollback")}>
-                        <IconButton size="1" variant="ghost" onClick={() => handleRollback(entry.id)}>
-                          <CounterClockwiseClockIcon />
-                        </IconButton>
-                      </Tooltip>
+                      <HoverCard.Root>
+                        <HoverCard.Trigger>
+                          <IconButton size="1" variant="ghost" onClick={() => handleRollback(entry.id)}>
+                            <CounterClockwiseClockIcon />
+                          </IconButton>
+                        </HoverCard.Trigger>
+                        <HoverCard.Content size="1">
+                          <Text size="1">{t("rollback")}</Text>
+                        </HoverCard.Content>
+                      </HoverCard.Root>
                     </Table.Cell>
                   </Table.Row>
                 ))}
@@ -1368,21 +1398,36 @@ function App() {
                       <Text size="1" color="gray">{new Date(backup.timestamp).toLocaleString()}</Text>
                     </Flex>
                     <Flex gap="1">
-                      <Tooltip content={t("view_content")}>
-                        <IconButton size="1" variant="ghost" onClick={() => handleViewBackupContent(backup.id)}>
-                          <EyeOpenIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content={t("restore")}>
-                        <IconButton size="1" variant="ghost" onClick={() => handleRestoreBackup(backup.id)}>
-                          <CounterClockwiseClockIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content={t("delete")}>
-                        <IconButton size="1" variant="ghost" color="red" onClick={() => handleDeleteBackup(backup.id)}>
-                          <TrashIcon />
-                        </IconButton>
-                      </Tooltip>
+                      <HoverCard.Root>
+                        <HoverCard.Trigger>
+                          <IconButton size="1" variant="ghost" onClick={() => handleViewBackupContent(backup.id)}>
+                            <EyeOpenIcon />
+                          </IconButton>
+                        </HoverCard.Trigger>
+                        <HoverCard.Content size="1">
+                          <Text size="1">{t("view_content")}</Text>
+                        </HoverCard.Content>
+                      </HoverCard.Root>
+                      <HoverCard.Root>
+                        <HoverCard.Trigger>
+                          <IconButton size="1" variant="ghost" onClick={() => handleRestoreBackup(backup.id)}>
+                            <CounterClockwiseClockIcon />
+                          </IconButton>
+                        </HoverCard.Trigger>
+                        <HoverCard.Content size="1">
+                          <Text size="1">{t("restore")}</Text>
+                        </HoverCard.Content>
+                      </HoverCard.Root>
+                      <HoverCard.Root>
+                        <HoverCard.Trigger>
+                          <IconButton size="1" variant="ghost" color="red" onClick={() => handleDeleteBackup(backup.id)}>
+                            <TrashIcon />
+                          </IconButton>
+                        </HoverCard.Trigger>
+                        <HoverCard.Content size="1">
+                          <Text size="1">{t("delete")}</Text>
+                        </HoverCard.Content>
+                      </HoverCard.Root>
                     </Flex>
                   </Flex>
                 ))}
@@ -1503,33 +1548,6 @@ function App() {
         </Dialog.Content>
       </Dialog.Root>
 
-      {/* IP Details Dialog */}
-      <Dialog.Root open={ipDetailsDialogOpen} onOpenChange={setIpDetailsDialogOpen}>
-        <Dialog.Content maxWidth="400px">
-          <Dialog.Title>{t("ip_details")}</Dialog.Title>
-          {selectedIpDetails && (
-            <Flex direction="column" gap="3" mt="3">
-              <Flex justify="between">
-                <Text weight="medium">{t("ip_address")}</Text>
-                <Text style={{ fontFamily: "monospace" }}>{selectedIpDetails.ip}</Text>
-              </Flex>
-              <Flex justify="between">
-                <Text weight="medium">{t("location")}</Text>
-                <Text>{selectedIpDetails.location || "-"}</Text>
-              </Flex>
-              <Flex justify="between">
-                <Text weight="medium">{t("cdn_provider")}</Text>
-                <Text>{selectedIpDetails.cdn || "-"}</Text>
-              </Flex>
-            </Flex>
-          )}
-          <Flex justify="end" mt="4">
-            <Dialog.Close>
-              <Button variant="soft">{t("close")}</Button>
-            </Dialog.Close>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
     </Flex>
   );
 
@@ -1593,7 +1611,7 @@ function App() {
                   <Table.ColumnHeaderCell>{t("baseline_latency")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("current_latency")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("last_check")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell width="100px"></Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -1807,7 +1825,7 @@ function App() {
                   <Table.ColumnHeaderCell>{t("rule_url")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("entry_count")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("last_updated")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell width="120px"></Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -1987,6 +2005,34 @@ function App() {
               </Dialog.Close>
               <Button onClick={handleImport}>{t("import")}</Button>
             </Flex>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
+
+      {/* IP Details Dialog */}
+      <Dialog.Root open={ipDetailsDialogOpen} onOpenChange={setIpDetailsDialogOpen}>
+        <Dialog.Content maxWidth="400px">
+          <Dialog.Title>{t("ip_details")}</Dialog.Title>
+          {selectedIpDetails && (
+            <Flex direction="column" gap="3" mt="3">
+              <Flex justify="between">
+                <Text weight="medium">{t("ip_address")}</Text>
+                <Text style={{ fontFamily: "monospace" }}>{selectedIpDetails.ip}</Text>
+              </Flex>
+              <Flex justify="between">
+                <Text weight="medium">{t("location")}</Text>
+                <Text>{selectedIpDetails.location || "-"}</Text>
+              </Flex>
+              <Flex justify="between">
+                <Text weight="medium">{t("cdn_provider")}</Text>
+                <Text>{selectedIpDetails.cdn || "-"}</Text>
+              </Flex>
+            </Flex>
+          )}
+          <Flex justify="end" mt="4">
+            <Dialog.Close>
+              <Button variant="soft">{t("close")}</Button>
+            </Dialog.Close>
           </Flex>
         </Dialog.Content>
       </Dialog.Root>
