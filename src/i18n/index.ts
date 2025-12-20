@@ -53,6 +53,9 @@ const resources = {
       cdn: "CDN",
       timeout: "超时",
       no_results: "暂无结果，请输入域名查询",
+      domain: "域名",
+      time: "时间",
+      action: "操作",
       found_ips: "找到 {{count}} 个 IP（按延迟排序）",
       best_ip: "最优 IP",
 
@@ -117,6 +120,7 @@ const resources = {
       status_proxy_needed: "可能需要代理访问",
       status_direct_access: "可直接访问",
       error_with_msg: "错误: {{msg}}",
+      invalid_domain_format: "请输入有效的域名格式，如 example.com",
       batch_result: "批量优化: {{success}}/{{total}} 成功",
 
       // 提示
@@ -275,6 +279,9 @@ const resources = {
       cdn: "CDN",
       timeout: "Timeout",
       no_results: "No results, please enter a domain to query",
+      domain: "Domain",
+      time: "Time",
+      action: "Action",
       found_ips: "Found {{count}} IPs (sorted by latency)",
       best_ip: "Best IP",
 
@@ -339,6 +346,7 @@ const resources = {
       status_proxy_needed: "Proxy may be required",
       status_direct_access: "Direct access available",
       error_with_msg: "Error: {{msg}}",
+      invalid_domain_format: "Please enter a valid domain format, e.g. example.com",
       batch_result: "Batch optimize: {{success}}/{{total}} succeeded",
 
       // Tips

@@ -179,12 +179,12 @@ function App() {
   const [selectedIpDetails, setSelectedIpDetails] = useState<{ ip: string; location?: string; cdn?: string } | null>(null);
 
   // Ref for batch optimize to avoid useEffect dependency issues
-  const handleBatchOptimizeRef = useRef<() => void>(() => {});
+  const handleBatchOptimizeRef = useRef<() => void>(() => { });
 
   // Responsive tabs
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [visibleTabCount, setVisibleTabCount] = useState(7);
-  
+
   const allTabs: { value: TabType; icon: React.ReactNode; label: string }[] = useMemo(() => [
     { value: "optimize", icon: <RocketIcon />, label: t("nav_optimize") },
     { value: "hosts", icon: <GlobeIcon />, label: t("nav_hosts") },
@@ -346,10 +346,24 @@ function App() {
     }
   }
 
+  // 验证域名格式
+  function isValidDomain(domain: string): boolean {
+    // 域名必须包含至少一个点，且不能以点开头或结尾
+    // 每个部分只能包含字母、数字和连字符，且不能以连字符开头或结尾
+    const domainRegex = /^(?!-)[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+    return domainRegex.test(domain);
+  }
+
   async function handleResolve(targetDomain?: string) {
     const d = targetDomain || domain;
     if (!d.trim()) {
       setStatusMsg({ key: "status_ready" });
+      return;
+    }
+
+    // 验证域名格式
+    if (!isValidDomain(d.trim())) {
+      setStatusMsg({ key: "invalid_domain_format" });
       return;
     }
 
@@ -443,6 +457,13 @@ function App() {
   async function addPreset() {
     if (!newPreset.trim()) return;
     const d = newPreset.trim().toLowerCase();
+
+    // 验证域名格式
+    if (!isValidDomain(d)) {
+      setStatusMsg({ key: "invalid_domain_format" });
+      return;
+    }
+
     if (presets.includes(d)) {
       setStatusMsg({ key: "preset_exists" });
       return;
@@ -535,15 +556,15 @@ function App() {
       const languageChanged = newSettings.language !== settings.language;
       setSettings(newSettings);
       i18n.changeLanguage(newSettings.language);
-      
+
       // 如果语言改变且有当前查询结果，重新查询以更新位置信息
       if (languageChanged && currentDomain && results.length > 0) {
         setLoading(true);
         setStatusMsg({ key: "status_resolving", params: { domain: currentDomain } });
         try {
-          const result = await invoke<ResolveResult>("resolve_and_ping", { 
-            domain: currentDomain, 
-            lang: newSettings.language 
+          const result = await invoke<ResolveResult>("resolve_and_ping", {
+            domain: currentDomain,
+            lang: newSettings.language
           });
           setResults(result.results);
           setStatusMsg({ key: "found_ips", params: { count: result.results.length } });
@@ -1047,9 +1068,9 @@ function App() {
             <ReloadIcon />
             {t("flush_dns")}
           </Button>
-          <Button 
-            variant="soft" 
-            disabled={!selectedIp || !currentDomain} 
+          <Button
+            variant="soft"
+            disabled={!selectedIp || !currentDomain}
             onClick={() => {
               const selected = results.find(r => r.ip === selectedIp);
               if (selected && currentDomain) {
@@ -1111,7 +1132,7 @@ function App() {
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>Domain</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("domain")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
@@ -1174,11 +1195,11 @@ function App() {
             <Table.Root>
               <Table.Header>
                 <Table.Row>
-                  <Table.ColumnHeaderCell>Time</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>Domain</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("time")}</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("domain")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("latency")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>Action</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("action")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
@@ -1520,7 +1541,7 @@ function App() {
       <Dialog.Root open={logsDialogOpen} onOpenChange={setLogsDialogOpen}>
         <Dialog.Content maxWidth="800px">
           <Dialog.Title>{t("logs")}</Dialog.Title>
-          
+
           {/* Log Files */}
           {logFiles.length > 0 && (
             <Flex gap="2" mb="3" wrap="wrap">
@@ -1532,7 +1553,7 @@ function App() {
               ))}
             </Flex>
           )}
-          
+
           <ScrollArea style={{ maxHeight: 500 }}>
             {logs.length === 0 ? (
               <Text color="gray">{t("no_logs")}</Text>
@@ -1616,7 +1637,7 @@ function App() {
             <Table.Root>
               <Table.Header>
                 <Table.Row>
-                  <Table.ColumnHeaderCell>Domain</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("domain")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("baseline_latency")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>{t("current_latency")}</Table.ColumnHeaderCell>
@@ -1645,7 +1666,7 @@ function App() {
                         <Text size="1">{monitor.last_check ? new Date(monitor.last_check).toLocaleString() : "-"}</Text>
                       </Table.Cell>
                       <Table.Cell>
-                        <Flex gap="1">
+                        <Flex gap="2">
                           <IconButton size="1" variant="ghost" onClick={() => handleCheckDomain(domain)}>
                             <ReloadIcon />
                           </IconButton>
@@ -1861,7 +1882,7 @@ function App() {
                       <Text size="1">{source.last_updated ? new Date(source.last_updated).toLocaleString() : "-"}</Text>
                     </Table.Cell>
                     <Table.Cell>
-                      <Flex gap="1">
+                      <Flex gap="2">
                         <IconButton size="1" variant="ghost" onClick={() => handleUpdateRuleSource(source.id)}>
                           <ReloadIcon />
                         </IconButton>
@@ -1943,7 +1964,7 @@ function App() {
               </Tabs.Trigger>
             ))}
           </Tabs.List>
-          
+
           {overflowTabs.length > 0 && (
             <DropdownMenu.Root>
               <DropdownMenu.Trigger>
@@ -1953,8 +1974,8 @@ function App() {
               </DropdownMenu.Trigger>
               <DropdownMenu.Content>
                 {overflowTabs.map((tab) => (
-                  <DropdownMenu.Item 
-                    key={tab.value} 
+                  <DropdownMenu.Item
+                    key={tab.value}
                     onClick={() => setActiveTab(tab.value)}
                   >
                     <Flex align="center" gap="2">
