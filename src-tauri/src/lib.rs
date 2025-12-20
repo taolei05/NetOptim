@@ -596,6 +596,10 @@ pub fn run() {
         .setup(|app| {
             // 启动定时调度器
             scheduler::start_scheduler();
+            // 启动网络监控循环
+            monitor::start_monitor();
+            // 启动规则自动更新
+            rules::start_rules_updater();
             
             // 创建系统托盘
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;

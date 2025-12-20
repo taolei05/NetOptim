@@ -85,6 +85,23 @@ pub fn detect_cdn(ip: &str) -> Option<String> {
     None
 }
 
+// IP 位置信息缓存
+use std::sync::RwLock;
+use std::time::Instant;
+
+struct IpLocationCacheEntry {
+    location: String,
+    timestamp: Instant,
+}
+
+lazy_static::lazy_static! {
+    static ref IP_LOCATION_CACHE: RwLock<std::collections::HashMap<String, IpLocationCacheEntry>> = 
+        RwLock::new(std::collections::HashMap::new());
+}
+
+// IP 位置缓存 TTL: 1 小时（IP 位置信息变化较少）
+const IP_LOCATION_CACHE_TTL_SECS: u64 = 3600;
+
 /// 获取 IP 地理位置信息
 pub async fn get_ip_location(ip: &str) -> Option<String> {
     get_ip_location_with_lang(ip, "zh-CN").await
@@ -92,6 +109,19 @@ pub async fn get_ip_location(ip: &str) -> Option<String> {
 
 /// 获取 IP 地理位置信息（指定语言）
 pub async fn get_ip_location_with_lang(ip: &str, lang: &str) -> Option<String> {
+    // 创建缓存 key（包含语言）
+    let cache_key = format!("{}:{}", ip, lang);
+    
+    // 先检查缓存
+    {
+        let cache = IP_LOCATION_CACHE.read().unwrap();
+        if let Some(entry) = cache.get(&cache_key) {
+            if entry.timestamp.elapsed().as_secs() < IP_LOCATION_CACHE_TTL_SECS {
+                return Some(entry.location.clone());
+            }
+        }
+    }
+    
     let client = Client::builder()
         .timeout(Duration::from_secs(5))
         .build()
@@ -130,7 +160,18 @@ pub async fn get_ip_location_with_lang(ip: &str, lang: &str) -> Option<String> {
     if parts.is_empty() {
         None
     } else {
-        Some(parts.join(" "))
+        let location = parts.join(" ");
+        
+        // 更新缓存
+        {
+            let mut cache = IP_LOCATION_CACHE.write().unwrap();
+            cache.insert(cache_key, IpLocationCacheEntry {
+                location: location.clone(),
+                timestamp: Instant::now(),
+            });
+        }
+        
+        Some(location)
     }
 }
 

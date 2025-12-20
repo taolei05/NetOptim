@@ -70,6 +70,57 @@ pub fn load_rule_config() -> RuleConfig {
     }
 }
 
+// 用于取消规则更新循环的通知器
+static RULES_UPDATE_CANCEL: std::sync::LazyLock<std::sync::Arc<tokio::sync::Notify>> = 
+    std::sync::LazyLock::new(|| std::sync::Arc::new(tokio::sync::Notify::new()));
+
+/// 启动规则自动更新（在应用启动时调用）
+pub fn start_rules_updater() {
+    tauri::async_runtime::spawn(async {
+        rules_update_loop().await;
+    });
+}
+
+/// 规则更新主循环
+async fn rules_update_loop() {
+    loop {
+        let config = load_rule_config();
+        
+        if !config.auto_update || config.sources.is_empty() {
+            // 如果未启用自动更新或没有规则源，等待配置变更通知
+            crate::logger::log_info("rules", "规则自动更新已禁用或无规则源，等待启用...");
+            RULES_UPDATE_CANCEL.notified().await;
+            continue;
+        }
+        
+        crate::logger::log_info("rules", &format!("开始自动更新 {} 个规则源", config.sources.len()));
+        
+        // 执行规则更新
+        match update_all_rules().await {
+            Ok(results) => {
+                let total: usize = results.values().sum();
+                crate::logger::log_info("rules", &format!("规则更新完成，共 {} 条规则", total));
+            }
+            Err(e) => {
+                crate::logger::log_error("rules", &format!("规则更新失败: {}", e), None);
+            }
+        }
+        
+        // 等待指定时间或被取消
+        let sleep_duration = std::time::Duration::from_secs(config.update_interval_hours as u64 * 3600);
+        tokio::select! {
+            _ = tokio::time::sleep(sleep_duration) => {
+                // 时间到，继续下一次更新
+            }
+            _ = RULES_UPDATE_CANCEL.notified() => {
+                // 被取消，重新检查配置
+                crate::logger::log_info("rules", "规则更新配置已更改");
+                continue;
+            }
+        }
+    }
+}
+
 pub fn save_rule_config(config: &RuleConfig) -> Result<(), AppError> {
     let path = get_rules_config_path();
     if let Some(parent) = path.parent() {
@@ -78,6 +129,8 @@ pub fn save_rule_config(config: &RuleConfig) -> Result<(), AppError> {
     let content = serde_json::to_string_pretty(config)
         .map_err(|e| AppError::Other(format!("序列化失败: {}", e)))?;
     fs::write(&path, content)?;
+    // 通知规则更新循环配置已更改
+    RULES_UPDATE_CANCEL.notify_one();
     Ok(())
 }
 

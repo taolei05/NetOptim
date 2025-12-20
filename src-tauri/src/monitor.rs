@@ -67,7 +67,60 @@ pub struct MonitorState {
 
 // 全局监控状态
 lazy_static::lazy_static! {
-    static ref MONITOR_STATE: Arc<RwLock<MonitorState>> = Arc::new(RwLock::new(MonitorState::default()));
+    static ref MONITOR_STATE: Arc<RwLock<MonitorState>> = {
+        let config = load_monitor_config();
+        Arc::new(RwLock::new(MonitorState {
+            domains: HashMap::new(),
+            config,
+        }))
+    };
+}
+
+// 用于取消监控循环的通知器
+static MONITOR_CANCEL: std::sync::LazyLock<Arc<tokio::sync::Notify>> = std::sync::LazyLock::new(|| {
+    Arc::new(tokio::sync::Notify::new())
+});
+
+/// 启动网络监控（在应用启动时调用）
+pub fn start_monitor() {
+    tauri::async_runtime::spawn(async {
+        monitor_loop().await;
+    });
+}
+
+/// 监控主循环
+async fn monitor_loop() {
+    loop {
+        let (enabled, interval_seconds, domains_count) = {
+            let state = MONITOR_STATE.read().await;
+            (state.config.enabled, state.config.check_interval_seconds, state.domains.len())
+        };
+        
+        if !enabled || domains_count == 0 {
+            // 如果未启用或没有监控域名，等待配置变更通知
+            crate::logger::log_info("monitor", "监控已禁用或无监控域名，等待启用...");
+            MONITOR_CANCEL.notified().await;
+            continue;
+        }
+        
+        crate::logger::log_info("monitor", &format!("开始监控检测，{} 个域名", domains_count));
+        
+        // 执行监控检测
+        let _ = check_all_domains().await;
+        
+        // 等待指定时间或被取消
+        let sleep_duration = std::time::Duration::from_secs(interval_seconds as u64);
+        tokio::select! {
+            _ = tokio::time::sleep(sleep_duration) => {
+                // 时间到，继续下一次检测
+            }
+            _ = MONITOR_CANCEL.notified() => {
+                // 被取消，重新检查配置
+                crate::logger::log_info("monitor", "监控配置已更新");
+                continue;
+            }
+        }
+    }
 }
 
 fn get_monitor_config_path() -> PathBuf {
@@ -119,6 +172,9 @@ pub async fn add_domain_to_monitor(domain: &str, ip: &str, baseline_latency: Opt
             alert_triggered: false,
         },
     );
+    drop(state);
+    // 通知监控循环有新域名
+    MONITOR_CANCEL.notify_one();
 }
 
 /// 从监控列表移除域名
@@ -235,6 +291,9 @@ pub async fn update_monitor_config(config: MonitorConfig) -> Result<(), AppError
     save_monitor_config(&config)?;
     let mut state = MONITOR_STATE.write().await;
     state.config = config;
+    drop(state);
+    // 通知监控循环配置已更改
+    MONITOR_CANCEL.notify_one();
     Ok(())
 }
 

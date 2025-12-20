@@ -11,49 +11,30 @@ interface StatusMessage {
 import {
   Flex,
   Text,
-  TextField,
   Button,
-  Card,
   Heading,
   Box,
-  Badge,
-  ScrollArea,
   IconButton,
   Dialog,
   DropdownMenu,
   Tabs,
-  Switch,
-  Select,
-  Table,
-  AlertDialog,
-  HoverCard,
 } from "@radix-ui/themes";
 import {
-  MagnifyingGlassIcon,
-  PlusIcon,
-  TrashIcon,
   CheckIcon,
-  ReloadIcon,
   ExclamationTriangleIcon,
   SunIcon,
   MoonIcon,
   DesktopIcon,
-  GearIcon,
   RocketIcon,
-  ClockIcon,
-  DownloadIcon,
-  UploadIcon,
-  CounterClockwiseClockIcon,
   GlobeIcon,
   ActivityLogIcon,
   MixerHorizontalIcon,
   FileTextIcon,
-  CrossCircledIcon,
-  EyeOpenIcon,
-  PlayIcon,
+  ClockIcon,
+  GearIcon,
   DotsHorizontalIcon,
 } from "@radix-ui/react-icons";
-import { useTheme, ACCENT_COLORS } from "./ThemeContext";
+import { useTheme } from "./ThemeContext";
 import "./i18n";
 import "./App.css";
 import type {
@@ -76,7 +57,15 @@ import type {
   HttpDiagResult,
   RuleConfig,
   RuleSource,
+  NetworkDiagnostic,
 } from "./types";
+import { OptimizePage } from "./components/OptimizePage";
+import { HostsPage } from "./components/HostsPage";
+import { MonitorPage } from "./components/MonitorPage";
+import { DiagnosticPage } from "./components/DiagnosticPage";
+import { RulesPage } from "./components/RulesPage";
+import { HistoryPage } from "./components/HistoryPage";
+import { SettingsPage } from "./components/SettingsPage";
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -146,12 +135,7 @@ function App() {
   const [diagTarget, setDiagTarget] = useState("");
   const [diagLoading, setDiagLoading] = useState(false);
   const [diagType, setDiagType] = useState<"ping" | "dns" | "traceroute" | "http" | "full">("ping");
-  const [diagResult, setDiagResult] = useState<{
-    ping?: PingDiagResult;
-    dns?: DnsQueryResult;
-    traceroute?: TracerouteResult;
-    http?: HttpDiagResult;
-  } | null>(null);
+  const [diagResult, setDiagResult] = useState<NetworkDiagnostic | null>(null);
 
   // Rules state
   const [ruleConfig, setRuleConfig] = useState<RuleConfig>({
@@ -683,30 +667,20 @@ function App() {
     try {
       if (diagType === "ping") {
         const result = await invoke<PingDiagResult>("run_ping_diagnostic", { target: diagTarget });
-        setDiagResult({ ping: result });
+        setDiagResult({ target: diagTarget, ping_result: result });
       } else if (diagType === "dns") {
         const result = await invoke<DnsQueryResult>("run_dns_query", { domain: diagTarget });
-        setDiagResult({ dns: result });
+        setDiagResult({ target: diagTarget, dns_result: result });
       } else if (diagType === "traceroute") {
         const result = await invoke<TracerouteResult>("run_traceroute", { target: diagTarget });
-        setDiagResult({ traceroute: result });
+        setDiagResult({ target: diagTarget, traceroute_result: result });
       } else if (diagType === "http") {
         const url = diagTarget.startsWith("http") ? diagTarget : `https://${diagTarget}`;
         const result = await invoke<HttpDiagResult>("run_http_diagnostic", { url });
-        setDiagResult({ http: result });
+        setDiagResult({ target: diagTarget, http_result: result });
       } else if (diagType === "full") {
-        const result = await invoke<{
-          ping_result?: PingDiagResult;
-          dns_result?: DnsQueryResult;
-          traceroute_result?: TracerouteResult;
-          http_result?: HttpDiagResult;
-        }>("run_full_diagnostic", { target: diagTarget });
-        setDiagResult({
-          ping: result.ping_result,
-          dns: result.dns_result,
-          traceroute: result.traceroute_result,
-          http: result.http_result,
-        });
+        const result = await invoke<NetworkDiagnostic>("run_full_diagnostic", { target: diagTarget });
+        setDiagResult(result);
       }
     } catch (e) {
       setStatusMsg({ key: "error_with_msg", params: { msg: String(e) } });
@@ -842,1064 +816,6 @@ function App() {
     }
   }
 
-  // Render optimize tab
-  const renderOptimizeTab = () => (
-    <Flex gap="4" style={{ flex: 1, minHeight: 0 }} pt="1" pb="4">
-      {/* Left sidebar - Presets */}
-      <Card style={{ width: 220, display: "flex", flexDirection: "column" }}>
-        <Flex justify="between" align="center" mb="2">
-          <Flex align="center" gap="1">
-            <GlobeIcon />
-            <Text size="2" weight="bold">{t("presets")}</Text>
-          </Flex>
-          <Flex gap="2" align="center">
-            <HoverCard.Root>
-              <HoverCard.Trigger>
-                <IconButton size="1" variant="ghost" onClick={() => handleExport("presets")}>
-                  <DownloadIcon />
-                </IconButton>
-              </HoverCard.Trigger>
-              <HoverCard.Content size="1">
-                <Text size="1">{t("export")}</Text>
-              </HoverCard.Content>
-            </HoverCard.Root>
-            <HoverCard.Root>
-              <HoverCard.Trigger>
-                <IconButton size="1" variant="ghost" onClick={() => { setImportType("presets"); setImportDialogOpen(true); }}>
-                  <UploadIcon />
-                </IconButton>
-              </HoverCard.Trigger>
-              <HoverCard.Content size="1">
-                <Text size="1">{t("import")}</Text>
-              </HoverCard.Content>
-            </HoverCard.Root>
-            <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
-              <Dialog.Trigger>
-                <IconButton size="1" variant="soft" title={t("add_preset")}>
-                  <PlusIcon />
-                </IconButton>
-              </Dialog.Trigger>
-              <Dialog.Content maxWidth="400px">
-                <Dialog.Title>{t("add_preset")}</Dialog.Title>
-                <Flex direction="column" gap="3" mt="3">
-                  <TextField.Root
-                    placeholder={t("preset_placeholder")}
-                    value={newPreset}
-                    onChange={(e) => setNewPreset(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addPreset()}
-                  />
-                  <Flex gap="3" justify="end">
-                    <Dialog.Close>
-                      <Button variant="soft" color="gray">{t("cancel")}</Button>
-                    </Dialog.Close>
-                    <Button onClick={addPreset}>{t("add")}</Button>
-                  </Flex>
-                </Flex>
-              </Dialog.Content>
-            </Dialog.Root>
-          </Flex>
-        </Flex>
-        <ScrollArea style={{ flex: 1 }}>
-          <Flex direction="column" gap="1">
-            {presets.length === 0 ? (
-              <Text size="1" color="gray" align="center" mt="4">{t("no_presets")}</Text>
-            ) : (
-              presets.map((p) => (
-                <Flex
-                  key={p}
-                  align="center"
-                  justify="between"
-                  p="2"
-                  style={{
-                    borderRadius: "var(--radius-2)",
-                    cursor: "pointer",
-                    background: domain === p ? "var(--accent-3)" : undefined,
-                  }}
-                  onClick={() => { setDomain(p); handleResolve(p); }}
-                >
-                  <Text size="1" style={{ wordBreak: "break-all" }}>{p}</Text>
-                  <IconButton
-                    size="1"
-                    variant="ghost"
-                    color="red"
-                    onClick={(e) => { e.stopPropagation(); removePreset(p); }}
-                  >
-                    <TrashIcon />
-                  </IconButton>
-                </Flex>
-              ))
-            )}
-          </Flex>
-        </ScrollArea>
-      </Card>
-
-      {/* Main content */}
-      <Flex direction="column" gap="3" style={{ flex: 1 }}>
-        {!isAdmin && (
-          <Flex align="center" gap="2">
-            <ExclamationTriangleIcon color="orange" />
-            <Text size="1" color="orange">{t("status_no_admin")}</Text>
-          </Flex>
-        )}
-
-        {/* Input area */}
-        <Flex gap="2">
-          <TextField.Root
-            style={{ flex: 1 }}
-            placeholder={t("domain_input_placeholder")}
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleResolve()}
-          />
-          <Button onClick={() => handleResolve()} disabled={loading}>
-            <MagnifyingGlassIcon />
-            {loading ? t("querying") : t("query")}
-          </Button>
-          <Button variant="soft" onClick={handleBatchOptimize} disabled={batchLoading || presets.length === 0}>
-            <RocketIcon />
-            {batchLoading ? t("batch_optimizing") : t("batch_optimize")}
-          </Button>
-        </Flex>
-
-        {/* Status */}
-        <Text size="2" color="gray">{status}</Text>
-
-        {/* Results table */}
-        <Card style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <ScrollArea style={{ flex: 1 }}>
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell style={{ textAlign: "center" }}>{t("latency")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("location")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell style={{ textAlign: "center" }}>{t("cdn")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {results.map((r) => (
-                  <Table.Row
-                    key={r.ip}
-                    style={{
-                      cursor: "pointer",
-                      background: selectedIp === r.ip ? "var(--accent-4)" : undefined,
-                    }}
-                    onClick={() => setSelectedIp(r.ip)}
-                  >
-                    <Table.Cell>
-                      <Text style={{ fontFamily: "monospace" }}>{r.ip}</Text>
-                    </Table.Cell>
-                    <Table.Cell style={{ textAlign: "center" }}>
-                      {r.latency !== null ? (
-                        <Badge color={r.latency < 100 ? "green" : r.latency < 300 ? "yellow" : "red"}>
-                          {r.latency} ms
-                        </Badge>
-                      ) : (
-                        <Badge color="gray">{t("timeout")}</Badge>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Text size="1" color="gray">{r.location || "-"}</Text>
-                    </Table.Cell>
-                    <Table.Cell style={{ textAlign: "center" }}>
-                      {r.is_cdn && <Badge color="blue">CDN</Badge>}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Flex gap="2">
-                        <HoverCard.Root>
-                          <HoverCard.Trigger>
-                            <IconButton
-                              size="1"
-                              variant="ghost"
-                              color="red"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToBlacklist(r.ip, currentDomain, r.latency === null ? "timeout" : undefined);
-                              }}
-                            >
-                              <CrossCircledIcon />
-                            </IconButton>
-                          </HoverCard.Trigger>
-                          <HoverCard.Content size="1">
-                            <Text size="1">{t("add_to_blacklist")}</Text>
-                          </HoverCard.Content>
-                        </HoverCard.Root>
-                        <HoverCard.Root>
-                          <HoverCard.Trigger>
-                            <IconButton
-                              size="1"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleGetIpDetails(r.ip);
-                              }}
-                            >
-                              <EyeOpenIcon />
-                            </IconButton>
-                          </HoverCard.Trigger>
-                          <HoverCard.Content size="1">
-                            <Text size="1">{t("ip_details")}</Text>
-                          </HoverCard.Content>
-                        </HoverCard.Root>
-                      </Flex>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-            {results.length === 0 && !loading && (
-              <Text size="2" color="gray" align="center" style={{ padding: "var(--space-4)" }}>{t("no_results")}</Text>
-            )}
-          </ScrollArea>
-        </Card>
-
-        {/* Action buttons */}
-        <Flex gap="2" justify="end">
-          <Button variant="soft" onClick={handleTestConnectivity} disabled={!currentDomain}>
-            <GlobeIcon />
-            {t("test_connectivity")}
-          </Button>
-          <Button variant="soft" onClick={() => currentDomain && handleCheckProxy(currentDomain)} disabled={!currentDomain}>
-            <MixerHorizontalIcon />
-            {t("check_proxy")}
-          </Button>
-          <Button variant="soft" onClick={handleFlushDns}>
-            <ReloadIcon />
-            {t("flush_dns")}
-          </Button>
-          <Button
-            variant="soft"
-            disabled={!selectedIp || !currentDomain}
-            onClick={() => {
-              const selected = results.find(r => r.ip === selectedIp);
-              if (selected && currentDomain) {
-                handleAddToMonitor(currentDomain, selected.ip, selected.latency);
-              }
-            }}
-          >
-            <ActivityLogIcon />
-            {t("add_to_monitor")}
-          </Button>
-          <Button disabled={!selectedIp || !isAdmin} onClick={handleWriteHosts}>
-            <CheckIcon />
-            {t("write_hosts")}
-          </Button>
-        </Flex>
-
-        {/* Proxy check result */}
-        {proxyCheckResult && (
-          <Flex align="center" gap="2">
-            <Badge color={proxyCheckResult.needs_proxy ? "orange" : "green"}>
-              {proxyCheckResult.needs_proxy ? t("proxy_needed") : t("proxy_not_needed")}
-            </Badge>
-            <Text size="1" color="gray">{proxyCheckResult.message}</Text>
-          </Flex>
-        )}
-      </Flex>
-    </Flex>
-  );
-
-  // Render hosts management tab
-  const renderHostsTab = () => (
-    <Flex direction="column" gap="4" style={{ flex: 1 }} pt="1" pb="4">
-      <Flex justify="between" align="center" style={{ minHeight: 32 }}>
-        <Heading size="5">{t("hosts_entries")}</Heading>
-        <Flex gap="2">
-          <Button variant="soft" onClick={() => handleExport("hosts")}>
-            <DownloadIcon />
-            {t("export")}
-          </Button>
-          <Button variant="soft" onClick={() => { setImportType("hosts"); setImportDialogOpen(true); }}>
-            <UploadIcon />
-            {t("import")}
-          </Button>
-          <Button variant="soft" onClick={loadHostsEntries}>
-            <ReloadIcon />
-            {t("refresh")}
-          </Button>
-        </Flex>
-      </Flex>
-
-      <Card style={{ flex: 1 }}>
-        <ScrollArea style={{ height: "100%" }}>
-          {hostsLoading ? (
-            <Text align="center" color="gray">{t("loading")}</Text>
-          ) : hostsEntries.length === 0 ? (
-            <Text align="center" color="gray" mt="4">{t("no_hosts_entries")}</Text>
-          ) : (
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("domain")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {hostsEntries.map((entry, idx) => (
-                  <Table.Row key={`${entry.ip}-${entry.domain}-${idx}`}>
-                    <Table.Cell>
-                      <Text style={{ fontFamily: "monospace" }}>{entry.ip}</Text>
-                    </Table.Cell>
-                    <Table.Cell>{entry.domain}</Table.Cell>
-                    <Table.Cell>
-                      <AlertDialog.Root>
-                        <AlertDialog.Trigger>
-                          <IconButton size="1" variant="ghost" color="red">
-                            <TrashIcon />
-                          </IconButton>
-                        </AlertDialog.Trigger>
-                        <AlertDialog.Content maxWidth="400px">
-                          <AlertDialog.Title>{t("remove_entry")}</AlertDialog.Title>
-                          <AlertDialog.Description>{t("confirm_remove")}</AlertDialog.Description>
-                          <Flex gap="3" mt="4" justify="end">
-                            <AlertDialog.Cancel>
-                              <Button variant="soft" color="gray">{t("cancel")}</Button>
-                            </AlertDialog.Cancel>
-                            <AlertDialog.Action>
-                              <Button color="red" onClick={() => handleRemoveHostsEntry(entry.domain)}>
-                                {t("delete")}
-                              </Button>
-                            </AlertDialog.Action>
-                          </Flex>
-                        </AlertDialog.Content>
-                      </AlertDialog.Root>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          )}
-        </ScrollArea>
-      </Card>
-    </Flex>
-  );
-
-  // Render history tab
-  const renderHistoryTab = () => (
-    <Flex direction="column" gap="4" style={{ flex: 1 }} pt="1" pb="4">
-      <Flex justify="between" align="center" style={{ minHeight: 32 }}>
-        <Heading size="5">{t("history")}</Heading>
-        <Button variant="soft" color="red" onClick={handleClearHistory} disabled={history.length === 0}>
-          <TrashIcon />
-          {t("clear_history")}
-        </Button>
-      </Flex>
-
-      <Card style={{ flex: 1 }}>
-        <ScrollArea style={{ height: "100%" }}>
-          {history.length === 0 ? (
-            <Text align="center" color="gray" mt="4">{t("no_history")}</Text>
-          ) : (
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeaderCell>{t("time")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("domain")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("latency")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("action")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {history.map((entry) => (
-                  <Table.Row key={entry.id}>
-                    <Table.Cell>
-                      <Text size="1">{new Date(entry.timestamp).toLocaleString()}</Text>
-                    </Table.Cell>
-                    <Table.Cell>{entry.domain}</Table.Cell>
-                    <Table.Cell>
-                      <Text style={{ fontFamily: "monospace" }}>{entry.ip}</Text>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {entry.latency !== null ? (
-                        <Badge color="green">{entry.latency} ms</Badge>
-                      ) : (
-                        <Badge color="gray">-</Badge>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Badge color={entry.action === "write" ? "blue" : "orange"}>
-                        {entry.action === "write" ? t("action_write") : t("action_rollback")}
-                      </Badge>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <HoverCard.Root>
-                        <HoverCard.Trigger>
-                          <IconButton size="1" variant="ghost" onClick={() => handleRollback(entry.id)}>
-                            <CounterClockwiseClockIcon />
-                          </IconButton>
-                        </HoverCard.Trigger>
-                        <HoverCard.Content size="1">
-                          <Text size="1">{t("rollback")}</Text>
-                        </HoverCard.Content>
-                      </HoverCard.Root>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          )}
-        </ScrollArea>
-      </Card>
-    </Flex>
-  );
-
-  // Render settings tab
-  const renderSettingsTab = () => (
-    <Flex direction="column" gap="4" style={{ maxWidth: 600 }} pt="1" pb="4">
-      <Flex justify="between" align="center" style={{ minHeight: 32 }}>
-        <Heading size="5">{t("settings")}</Heading>
-      </Flex>
-
-      <Card>
-        <Flex direction="column" gap="4" p="2">
-          {/* Language */}
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("language")}</Text>
-            <Select.Root
-              value={settings.language}
-              onValueChange={(value: "zh-CN" | "en-US") => saveSettings({ ...settings, language: value })}
-            >
-              <Select.Trigger style={{ width: 150 }} />
-              <Select.Content position="popper">
-                <Select.Item value="zh-CN">中文</Select.Item>
-                <Select.Item value="en-US">English</Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-
-          {/* Theme */}
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("theme")}</Text>
-            <Select.Root value={mode} onValueChange={(value: "light" | "dark" | "system") => setMode(value)}>
-              <Select.Trigger style={{ width: 150 }} />
-              <Select.Content position="popper">
-                <Select.Item value="light">
-                  <Flex align="center" gap="2"><SunIcon /> {t("theme_light")}</Flex>
-                </Select.Item>
-                <Select.Item value="dark">
-                  <Flex align="center" gap="2"><MoonIcon /> {t("theme_dark")}</Flex>
-                </Select.Item>
-                <Select.Item value="system">
-                  <Flex align="center" gap="2"><DesktopIcon /> {t("theme_system")}</Flex>
-                </Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-
-          {/* Accent Color */}
-          {/* Accent Color */}
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("accent_color")}</Text>
-            <Select.Root
-              value={accentColor}
-              onValueChange={(value) => setAccentColor(value as typeof accentColor)}
-            >
-              <Select.Trigger style={{ width: 150 }} />
-              <Select.Content position="popper">
-                {ACCENT_COLORS.map((color) => (
-                  <Select.Item key={color} value={color}>
-                    <Flex align="center" gap="2">
-                      <Box
-                        style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: "50%",
-                          backgroundColor: `var(--${color}-9)`,
-                        }}
-                      />
-                      {t(`color_${color}`)}
-                    </Flex>
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-
-          {/* Minimize to tray */}
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("minimize_to_tray")}</Text>
-            <Switch
-              checked={settings.minimize_to_tray}
-              onCheckedChange={(checked) => saveSettings({ ...settings, minimize_to_tray: checked })}
-            />
-          </Flex>
-        </Flex>
-      </Card>
-
-      {/* Scheduler */}
-      <Card>
-        <Flex direction="column" gap="4" p="2">
-          <Flex align="center" gap="2">
-            <ClockIcon />
-            <Text weight="bold">{t("scheduler")}</Text>
-          </Flex>
-
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("scheduler_enabled")}</Text>
-            <Switch
-              checked={schedulerConfig.enabled}
-              onCheckedChange={(checked) => saveSchedulerConfig({ ...schedulerConfig, enabled: checked })}
-            />
-          </Flex>
-
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("scheduler_interval")}</Text>
-            <Select.Root
-              value={String(schedulerConfig.interval_minutes)}
-              onValueChange={(value) => saveSchedulerConfig({ ...schedulerConfig, interval_minutes: parseInt(value) })}
-              disabled={!schedulerConfig.enabled}
-            >
-              <Select.Trigger style={{ width: 150 }} />
-              <Select.Content position="popper">
-                <Select.Item value="30">30</Select.Item>
-                <Select.Item value="60">60</Select.Item>
-                <Select.Item value="120">120</Select.Item>
-                <Select.Item value="360">360</Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("scheduler_auto_update")}</Text>
-            <Switch
-              checked={schedulerConfig.auto_update}
-              onCheckedChange={(checked) => saveSchedulerConfig({ ...schedulerConfig, auto_update: checked })}
-              disabled={!schedulerConfig.enabled}
-            />
-          </Flex>
-
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("scheduler_notify")}</Text>
-            <Switch
-              checked={schedulerConfig.notify}
-              onCheckedChange={(checked) => saveSchedulerConfig({ ...schedulerConfig, notify: checked })}
-              disabled={!schedulerConfig.enabled}
-            />
-          </Flex>
-        </Flex>
-      </Card>
-
-      {/* Backup */}
-      <Card>
-        <Flex direction="column" gap="4" p="2">
-          <Flex align="center" justify="between">
-            <Flex align="center" gap="2">
-              <DownloadIcon />
-              <Text weight="bold">{t("backup")}</Text>
-            </Flex>
-            <Dialog.Root open={backupDialogOpen} onOpenChange={setBackupDialogOpen}>
-              <Dialog.Trigger>
-                <Button size="1" variant="soft">
-                  <PlusIcon />
-                  {t("create_backup")}
-                </Button>
-              </Dialog.Trigger>
-              <Dialog.Content maxWidth="400px">
-                <Dialog.Title>{t("create_backup")}</Dialog.Title>
-                <Flex direction="column" gap="3" mt="3">
-                  <TextField.Root
-                    placeholder={t("backup_description")}
-                    value={backupDescription}
-                    onChange={(e) => setBackupDescription(e.target.value)}
-                  />
-                  <Flex gap="3" justify="end">
-                    <Dialog.Close>
-                      <Button variant="soft" color="gray">{t("cancel")}</Button>
-                    </Dialog.Close>
-                    <Button onClick={handleCreateBackup}>{t("create_backup")}</Button>
-                  </Flex>
-                </Flex>
-              </Dialog.Content>
-            </Dialog.Root>
-          </Flex>
-
-          <ScrollArea style={{ maxHeight: 200 }}>
-            {backups.length === 0 ? (
-              <Text size="2" color="gray">{t("no_backups")}</Text>
-            ) : (
-              <Flex direction="column" gap="2">
-                {backups.map((backup) => (
-                  <Flex key={backup.id} justify="between" align="center" p="2" style={{ background: "var(--gray-2)", borderRadius: "var(--radius-2)" }}>
-                    <Flex direction="column" gap="1">
-                      <Text size="2">{backup.description || new Date(backup.timestamp).toLocaleString()}</Text>
-                      <Text size="1" color="gray">{new Date(backup.timestamp).toLocaleString()}</Text>
-                    </Flex>
-                    <Flex gap="1">
-                      <HoverCard.Root>
-                        <HoverCard.Trigger>
-                          <IconButton size="1" variant="ghost" onClick={() => handleViewBackupContent(backup.id)}>
-                            <EyeOpenIcon />
-                          </IconButton>
-                        </HoverCard.Trigger>
-                        <HoverCard.Content size="1">
-                          <Text size="1">{t("view_content")}</Text>
-                        </HoverCard.Content>
-                      </HoverCard.Root>
-                      <HoverCard.Root>
-                        <HoverCard.Trigger>
-                          <IconButton size="1" variant="ghost" onClick={() => handleRestoreBackup(backup.id)}>
-                            <CounterClockwiseClockIcon />
-                          </IconButton>
-                        </HoverCard.Trigger>
-                        <HoverCard.Content size="1">
-                          <Text size="1">{t("restore")}</Text>
-                        </HoverCard.Content>
-                      </HoverCard.Root>
-                      <HoverCard.Root>
-                        <HoverCard.Trigger>
-                          <IconButton size="1" variant="ghost" color="red" onClick={() => handleDeleteBackup(backup.id)}>
-                            <TrashIcon />
-                          </IconButton>
-                        </HoverCard.Trigger>
-                        <HoverCard.Content size="1">
-                          <Text size="1">{t("delete")}</Text>
-                        </HoverCard.Content>
-                      </HoverCard.Root>
-                    </Flex>
-                  </Flex>
-                ))}
-              </Flex>
-            )}
-          </ScrollArea>
-        </Flex>
-      </Card>
-
-      {/* Blacklist */}
-      <Card>
-        <Flex direction="column" gap="4" p="2">
-          <Flex align="center" gap="2">
-            <CrossCircledIcon />
-            <Text weight="bold">{t("blacklist")}</Text>
-          </Flex>
-
-          <ScrollArea style={{ maxHeight: 200 }}>
-            {blacklist.entries.length === 0 ? (
-              <Text size="2" color="gray">{t("no_blacklist")}</Text>
-            ) : (
-              <Flex direction="column" gap="2">
-                {blacklist.entries.map((entry) => (
-                  <Flex key={entry.ip} justify="between" align="center" p="2" style={{ background: "var(--gray-2)", borderRadius: "var(--radius-2)" }}>
-                    <Flex direction="column" gap="1">
-                      <Text size="2" style={{ fontFamily: "monospace" }}>{entry.ip}</Text>
-                      {entry.reason && <Text size="1" color="gray">{entry.reason}</Text>}
-                    </Flex>
-                    <IconButton size="1" variant="ghost" color="red" onClick={() => handleRemoveFromBlacklist(entry.ip)}>
-                      <TrashIcon />
-                    </IconButton>
-                  </Flex>
-                ))}
-              </Flex>
-            )}
-          </ScrollArea>
-        </Flex>
-      </Card>
-
-      {/* Logs */}
-      <Card>
-        <Flex direction="column" gap="4" p="2">
-          <Flex align="center" justify="between">
-            <Flex align="center" gap="2">
-              <FileTextIcon />
-              <Text weight="bold">{t("logs")}</Text>
-            </Flex>
-            <Flex gap="2">
-              <Button size="1" variant="soft" onClick={handleLoadLogs}>
-                <EyeOpenIcon />
-                {t("view_logs")}
-              </Button>
-              <Button size="1" variant="soft" color="red" onClick={handleClearLogs}>
-                <TrashIcon />
-                {t("clear_logs")}
-              </Button>
-            </Flex>
-          </Flex>
-        </Flex>
-      </Card>
-
-      {/* View Backup Content Dialog */}
-      <Dialog.Root open={!!viewBackupContent} onOpenChange={() => setViewBackupContent(null)}>
-        <Dialog.Content maxWidth="600px">
-          <Dialog.Title>{t("view_content")}</Dialog.Title>
-          <ScrollArea style={{ maxHeight: 400 }}>
-            <pre style={{ fontSize: 12, fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
-              {viewBackupContent}
-            </pre>
-          </ScrollArea>
-          <Flex justify="end" mt="3">
-            <Dialog.Close>
-              <Button variant="soft">{t("close")}</Button>
-            </Dialog.Close>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
-
-      {/* View Logs Dialog */}
-      <Dialog.Root open={logsDialogOpen} onOpenChange={setLogsDialogOpen}>
-        <Dialog.Content maxWidth="800px">
-          <Dialog.Title>{t("logs")}</Dialog.Title>
-
-          {/* Log Files */}
-          {logFiles.length > 0 && (
-            <Flex gap="2" mb="3" wrap="wrap">
-              <Text size="2" weight="medium">{t("log_files")}:</Text>
-              {logFiles.map(([name, size]) => (
-                <Badge key={name} variant="soft">
-                  {name} ({(size / 1024).toFixed(1)} KB)
-                </Badge>
-              ))}
-            </Flex>
-          )}
-
-          <ScrollArea style={{ maxHeight: 500 }}>
-            {logs.length === 0 ? (
-              <Text color="gray">{t("no_logs")}</Text>
-            ) : (
-              <Flex direction="column" gap="1">
-                {logs.map((line, idx) => (
-                  <Text key={idx} size="1" style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
-                    {line}
-                  </Text>
-                ))}
-              </Flex>
-            )}
-          </ScrollArea>
-          <Flex justify="end" mt="3" gap="2">
-            <Button variant="soft" color="red" onClick={handleClearLogs}>
-              <TrashIcon />
-              {t("clear_logs")}
-            </Button>
-            <Dialog.Close>
-              <Button variant="soft">{t("close")}</Button>
-            </Dialog.Close>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
-
-    </Flex>
-  );
-
-  // Render monitor tab
-  const renderMonitorTab = () => (
-    <Flex direction="column" gap="4" style={{ flex: 1 }} pt="1" pb="4">
-      <Flex justify="between" align="center" style={{ minHeight: 32 }}>
-        <Heading size="5">{t("monitor")}</Heading>
-        <Flex gap="2">
-          <Button variant="soft" onClick={handleCheckAllDomains}>
-            <ReloadIcon />
-            {t("check_all")}
-          </Button>
-        </Flex>
-      </Flex>
-
-      <Card>
-        <Flex direction="column" gap="3" p="2">
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("monitor_enabled")}</Text>
-            <Switch
-              checked={monitorConfig.enabled}
-              onCheckedChange={(checked) => handleSaveMonitorConfig({ ...monitorConfig, enabled: checked })}
-            />
-          </Flex>
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("monitor_interval")}</Text>
-            <Select.Root
-              value={String(monitorConfig.check_interval_seconds)}
-              onValueChange={(v) => handleSaveMonitorConfig({ ...monitorConfig, check_interval_seconds: parseInt(v) })}
-            >
-              <Select.Trigger style={{ width: 120 }} />
-              <Select.Content>
-                <Select.Item value="30">30</Select.Item>
-                <Select.Item value="60">60</Select.Item>
-                <Select.Item value="120">120</Select.Item>
-                <Select.Item value="300">300</Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("monitor_auto_reoptimize")}</Text>
-            <Switch
-              checked={monitorConfig.auto_reoptimize}
-              onCheckedChange={(checked) => handleSaveMonitorConfig({ ...monitorConfig, auto_reoptimize: checked })}
-            />
-          </Flex>
-        </Flex>
-      </Card>
-
-      <Card style={{ flex: 1 }}>
-        <ScrollArea style={{ height: "100%" }}>
-          {!monitorState || Object.keys(monitorState.domains).length === 0 ? (
-            <Text align="center" color="gray" mt="4">{t("no_monitored_domains")}</Text>
-          ) : (
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeaderCell>{t("domain")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("ip_address")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("baseline_latency")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("current_latency")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("last_check")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {Object.entries(monitorState.domains).map(([domain, monitor]) => {
-                  const lastRecord = monitor.records[monitor.records.length - 1];
-                  return (
-                    <Table.Row key={domain}>
-                      <Table.Cell>{domain}</Table.Cell>
-                      <Table.Cell><Text style={{ fontFamily: "monospace" }}>{monitor.current_ip}</Text></Table.Cell>
-                      <Table.Cell>
-                        {monitor.baseline_latency ? <Badge color="blue">{monitor.baseline_latency} ms</Badge> : "-"}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {lastRecord?.latency ? (
-                          <Badge color={lastRecord.status === "Good" ? "green" : lastRecord.status === "Warning" ? "yellow" : "red"}>
-                            {lastRecord.latency} ms
-                          </Badge>
-                        ) : "-"}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Text size="1">{monitor.last_check ? new Date(monitor.last_check).toLocaleString() : "-"}</Text>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Flex gap="2">
-                          <IconButton size="1" variant="ghost" onClick={() => handleCheckDomain(domain)}>
-                            <ReloadIcon />
-                          </IconButton>
-                          <IconButton size="1" variant="ghost" color="red" onClick={() => handleRemoveFromMonitor(domain)}>
-                            <TrashIcon />
-                          </IconButton>
-                        </Flex>
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
-          )}
-        </ScrollArea>
-      </Card>
-    </Flex>
-  );
-
-  // Render diagnostic tab
-  const renderDiagnosticTab = () => (
-    <Flex direction="column" gap="4" style={{ flex: 1 }} pt="1" pb="4">
-      <Flex justify="between" align="center" style={{ minHeight: 32 }}>
-        <Heading size="5">{t("diagnostic")}</Heading>
-      </Flex>
-
-      <Flex gap="2" align="center">
-        <TextField.Root
-          style={{ flex: 1 }}
-          placeholder={t("target_input")}
-          value={diagTarget}
-          onChange={(e) => setDiagTarget(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleRunDiagnostic()}
-        />
-        <Select.Root value={diagType} onValueChange={(v) => setDiagType(v as typeof diagType)}>
-          <Select.Trigger style={{ width: 150 }} />
-          <Select.Content>
-            <Select.Item value="ping">{t("ping_test")}</Select.Item>
-            <Select.Item value="dns">{t("dns_query")}</Select.Item>
-            <Select.Item value="traceroute">{t("traceroute")}</Select.Item>
-            <Select.Item value="http">{t("http_test")}</Select.Item>
-            <Select.Item value="full">{t("full_diagnostic")}</Select.Item>
-          </Select.Content>
-        </Select.Root>
-        <Button onClick={handleRunDiagnostic} disabled={diagLoading || !diagTarget.trim()}>
-          <PlayIcon />
-          {diagLoading ? t("loading") : t("run_diagnostic")}
-        </Button>
-      </Flex>
-
-      <Card style={{ flex: 1 }}>
-        <ScrollArea style={{ height: "100%" }}>
-          {diagResult ? (
-            <Flex direction="column" gap="3" p="2">
-              {diagResult.ping && (
-                <Box>
-                  <Text weight="bold" mb="2">{t("ping_test")}</Text>
-                  <Flex gap="4" wrap="wrap">
-                    <Text size="2">{t("packets_sent")}: {diagResult.ping.packets_sent}</Text>
-                    <Text size="2">{t("packets_received")}: {diagResult.ping.packets_received}</Text>
-                    <Text size="2">{t("packet_loss")}: {diagResult.ping.packet_loss_percent}%</Text>
-                    {diagResult.ping.avg_latency_ms && (
-                      <Text size="2">{t("avg_latency")}: {diagResult.ping.avg_latency_ms} ms</Text>
-                    )}
-                  </Flex>
-                </Box>
-              )}
-              {diagResult.dns && (
-                <Box>
-                  <Text weight="bold" mb="2">{t("dns_query")}</Text>
-                  {diagResult.dns.records.map((r, i) => (
-                    <Text key={i} size="2" style={{ fontFamily: "monospace" }}>
-                      {r.record_type}: {r.value} {r.ttl && `(TTL: ${r.ttl})`}
-                    </Text>
-                  ))}
-                </Box>
-              )}
-              {diagResult.traceroute && (
-                <Box>
-                  <Text weight="bold" mb="2">{t("traceroute")}</Text>
-                  {diagResult.traceroute.hops.map((hop) => (
-                    <Text key={hop.hop} size="2" style={{ fontFamily: "monospace" }}>
-                      {hop.hop}. {hop.ip || "*"} {hop.hostname && `(${hop.hostname})`} {hop.latency_ms && `${hop.latency_ms} ms`}
-                    </Text>
-                  ))}
-                </Box>
-              )}
-              {diagResult.http && (
-                <Box>
-                  <Text weight="bold" mb="2">{t("http_test")}</Text>
-                  <Flex gap="4">
-                    {diagResult.http.status_code && <Text size="2">{t("status_code")}: {diagResult.http.status_code}</Text>}
-                    <Text size="2">{t("response_time")}: {diagResult.http.response_time_ms} ms</Text>
-                    {diagResult.http.error && <Text size="2" color="red">{diagResult.http.error}</Text>}
-                  </Flex>
-                </Box>
-              )}
-            </Flex>
-          ) : (
-            <Text align="center" color="gray" mt="4">{t("no_results")}</Text>
-          )}
-        </ScrollArea>
-      </Card>
-    </Flex>
-  );
-
-  // Render rules tab
-  const renderRulesTab = () => (
-    <Flex direction="column" gap="4" style={{ flex: 1 }} pt="1" pb="4">
-      <Flex justify="between" align="center" style={{ minHeight: 32 }}>
-        <Heading size="5">{t("rules")}</Heading>
-        <Flex gap="2">
-          <Button variant="soft" onClick={handleUpdateAllRules}>
-            <ReloadIcon />
-            {t("update_all_rules")}
-          </Button>
-          <Dialog.Root open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>
-            <Dialog.Trigger>
-              <Button>
-                <PlusIcon />
-                {t("add_rule_source")}
-              </Button>
-            </Dialog.Trigger>
-            <Dialog.Content maxWidth="400px">
-              <Dialog.Title>{t("add_rule_source")}</Dialog.Title>
-              <Flex direction="column" gap="3" mt="3">
-                <TextField.Root
-                  placeholder={t("rule_name")}
-                  value={newRuleName}
-                  onChange={(e) => setNewRuleName(e.target.value)}
-                />
-                <TextField.Root
-                  placeholder={t("rule_url")}
-                  value={newRuleUrl}
-                  onChange={(e) => setNewRuleUrl(e.target.value)}
-                />
-                <Flex gap="3" justify="end">
-                  <Dialog.Close>
-                    <Button variant="soft" color="gray">{t("cancel")}</Button>
-                  </Dialog.Close>
-                  <Button onClick={handleAddRuleSource}>{t("add")}</Button>
-                </Flex>
-              </Flex>
-            </Dialog.Content>
-          </Dialog.Root>
-        </Flex>
-      </Flex>
-
-      {/* Rule Config */}
-      <Card>
-        <Flex direction="column" gap="3" p="2">
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("auto_update_rules")}</Text>
-            <Switch
-              checked={ruleConfig.auto_update}
-              onCheckedChange={(checked) => handleSaveRuleConfig({ ...ruleConfig, auto_update: checked })}
-            />
-          </Flex>
-          <Flex justify="between" align="center">
-            <Text weight="medium">{t("update_interval")}</Text>
-            <Select.Root
-              value={String(ruleConfig.update_interval_hours)}
-              onValueChange={(v) => handleSaveRuleConfig({ ...ruleConfig, update_interval_hours: parseInt(v) })}
-              disabled={!ruleConfig.auto_update}
-            >
-              <Select.Trigger style={{ width: 120 }} />
-              <Select.Content>
-                <Select.Item value="6">6</Select.Item>
-                <Select.Item value="12">12</Select.Item>
-                <Select.Item value="24">24</Select.Item>
-                <Select.Item value="48">48</Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-        </Flex>
-      </Card>
-
-      <Card style={{ flex: 1 }}>
-        <ScrollArea style={{ height: "100%" }}>
-          {ruleConfig.sources.length === 0 ? (
-            <Text align="center" color="gray" mt="4">{t("no_rule_sources")}</Text>
-          ) : (
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeaderCell>{t("rule_name")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("rule_url")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("entry_count")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>{t("last_updated")}</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {ruleConfig.sources.map((source) => (
-                  <Table.Row key={source.id}>
-                    <Table.Cell>
-                      <Flex align="center" gap="2">
-                        <Switch
-                          size="1"
-                          checked={source.enabled}
-                          onCheckedChange={(checked) => handleToggleRuleSource(source.id, checked)}
-                        />
-                        <Text>{source.name}</Text>
-                      </Flex>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Text size="1" style={{ wordBreak: "break-all" }}>{source.url}</Text>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Badge>{source.entry_count}</Badge>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Text size="1">{source.last_updated ? new Date(source.last_updated).toLocaleString() : "-"}</Text>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Flex gap="2">
-                        <IconButton size="1" variant="ghost" onClick={() => handleUpdateRuleSource(source.id)}>
-                          <ReloadIcon />
-                        </IconButton>
-                        <IconButton size="1" variant="ghost" color="red" onClick={() => handleRemoveRuleSource(source.id)}>
-                          <TrashIcon />
-                        </IconButton>
-                      </Flex>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          )}
-        </ScrollArea>
-      </Card>
-    </Flex>
-  );
 
   return (
     <Box p="4" style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -1991,13 +907,127 @@ function App() {
         </Flex>
 
         <Box style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          {activeTab === "optimize" && renderOptimizeTab()}
-          {activeTab === "hosts" && renderHostsTab()}
-          {activeTab === "monitor" && renderMonitorTab()}
-          {activeTab === "diagnostic" && renderDiagnosticTab()}
-          {activeTab === "rules" && renderRulesTab()}
-          {activeTab === "history" && renderHistoryTab()}
-          {activeTab === "settings" && renderSettingsTab()}
+          {activeTab === "optimize" && (
+            <OptimizePage
+              presets={presets}
+              domain={domain}
+              setDomain={setDomain}
+              newPreset={newPreset}
+              setNewPreset={setNewPreset}
+              dialogOpen={dialogOpen}
+              setDialogOpen={setDialogOpen}
+              addPreset={addPreset}
+              removePreset={removePreset}
+              handleExport={handleExport}
+              setImportType={setImportType}
+              setImportDialogOpen={setImportDialogOpen}
+              isAdmin={isAdmin}
+              loading={loading}
+              handleResolve={handleResolve}
+              batchLoading={batchLoading}
+              handleBatchOptimize={handleBatchOptimize}
+              status={status}
+              results={results}
+              selectedIp={selectedIp}
+              setSelectedIp={setSelectedIp}
+              currentDomain={currentDomain}
+              handleAddToBlacklist={handleAddToBlacklist}
+              handleGetIpDetails={handleGetIpDetails}
+              handleTestConnectivity={handleTestConnectivity}
+              handleCheckProxy={handleCheckProxy}
+              handleFlushDns={handleFlushDns}
+              handleAddToMonitor={handleAddToMonitor}
+              handleWriteHosts={handleWriteHosts}
+              proxyCheckResult={proxyCheckResult}
+            />
+          )}
+          {activeTab === "hosts" && (
+            <HostsPage
+              hostsLoading={hostsLoading}
+              hostsEntries={hostsEntries}
+              loadHostsEntries={loadHostsEntries}
+              handleRemoveHostsEntry={handleRemoveHostsEntry}
+              handleExport={handleExport}
+              setImportType={setImportType}
+              setImportDialogOpen={setImportDialogOpen}
+            />
+          )}
+          {activeTab === "monitor" && (
+            <MonitorPage
+              monitorConfig={monitorConfig}
+              monitorState={monitorState}
+              handleCheckAllDomains={handleCheckAllDomains}
+              handleSaveMonitorConfig={handleSaveMonitorConfig}
+              handleCheckDomain={handleCheckDomain}
+              handleRemoveFromMonitor={handleRemoveFromMonitor}
+            />
+          )}
+          {activeTab === "diagnostic" && (
+            <DiagnosticPage
+              diagTarget={diagTarget}
+              setDiagTarget={setDiagTarget}
+              diagType={diagType}
+              setDiagType={setDiagType}
+              diagLoading={diagLoading}
+              handleRunDiagnostic={handleRunDiagnostic}
+              diagResult={diagResult}
+            />
+          )}
+          {activeTab === "rules" && (
+            <RulesPage
+              ruleConfig={ruleConfig}
+              handleUpdateAllRules={handleUpdateAllRules}
+              ruleDialogOpen={ruleDialogOpen}
+              setRuleDialogOpen={setRuleDialogOpen}
+              newRuleName={newRuleName}
+              setNewRuleName={setNewRuleName}
+              newRuleUrl={newRuleUrl}
+              setNewRuleUrl={setNewRuleUrl}
+              handleAddRuleSource={handleAddRuleSource}
+              handleSaveRuleConfig={handleSaveRuleConfig}
+              handleToggleRuleSource={handleToggleRuleSource}
+              handleUpdateRuleSource={handleUpdateRuleSource}
+              handleRemoveRuleSource={handleRemoveRuleSource}
+            />
+          )}
+          {activeTab === "history" && (
+            <HistoryPage
+              history={history}
+              handleClearHistory={handleClearHistory}
+              handleRollback={handleRollback}
+            />
+          )}
+          {activeTab === "settings" && (
+            <SettingsPage
+              settings={settings}
+              saveSettings={saveSettings}
+              mode={mode}
+              setMode={setMode}
+              accentColor={accentColor}
+              setAccentColor={setAccentColor}
+              schedulerConfig={schedulerConfig}
+              saveSchedulerConfig={saveSchedulerConfig}
+              backupDialogOpen={backupDialogOpen}
+              setBackupDialogOpen={setBackupDialogOpen}
+              backupDescription={backupDescription}
+              setBackupDescription={setBackupDescription}
+              handleCreateBackup={handleCreateBackup}
+              backups={backups}
+              handleViewBackupContent={handleViewBackupContent}
+              handleRestoreBackup={handleRestoreBackup}
+              handleDeleteBackup={handleDeleteBackup}
+              blacklist={blacklist}
+              handleRemoveFromBlacklist={handleRemoveFromBlacklist}
+              handleLoadLogs={handleLoadLogs}
+              handleClearLogs={handleClearLogs}
+              viewBackupContent={viewBackupContent}
+              setViewBackupContent={setViewBackupContent}
+              logsDialogOpen={logsDialogOpen}
+              setLogsDialogOpen={setLogsDialogOpen}
+              logFiles={logFiles}
+              logs={logs}
+            />
+          )}
         </Box>
       </Tabs.Root>
 

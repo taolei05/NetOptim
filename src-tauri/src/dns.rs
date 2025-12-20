@@ -35,9 +35,36 @@ struct DohAnswer {
     record_type: u16,
     data: String,
 }
+// DNS 解析缓存
+use std::sync::RwLock;
+use std::time::Instant;
+
+struct DnsCacheEntry {
+    ips: Vec<IpAddr>,
+    timestamp: Instant,
+}
+
+lazy_static::lazy_static! {
+    static ref DNS_CACHE: RwLock<std::collections::HashMap<String, DnsCacheEntry>> = 
+        RwLock::new(std::collections::HashMap::new());
+}
+
+// 缓存 TTL: 5 分钟
+const DNS_CACHE_TTL_SECS: u64 = 300;
 
 /// 从多个 DNS 服务器并行解析域名，收集所有不重复的 IP
 pub async fn resolve_domain(domain: &str) -> Result<Vec<IpAddr>, AppError> {
+    // 先检查缓存
+    {
+        let cache = DNS_CACHE.read().unwrap();
+        if let Some(entry) = cache.get(domain) {
+            if entry.timestamp.elapsed().as_secs() < DNS_CACHE_TTL_SECS {
+                crate::logger::log_info("dns", &format!("使用缓存的 DNS 结果: {}", domain));
+                return Ok(entry.ips.clone());
+            }
+        }
+    }
+    
     let mut all_ips: HashSet<IpAddr> = HashSet::new();
 
     // 并行执行所有解析任务
@@ -72,7 +99,18 @@ pub async fn resolve_domain(domain: &str) -> Result<Vec<IpAddr>, AppError> {
         }
     }
 
-    Ok(all_ips.into_iter().collect())
+    let ips: Vec<IpAddr> = all_ips.into_iter().collect();
+    
+    // 更新缓存
+    if !ips.is_empty() {
+        let mut cache = DNS_CACHE.write().unwrap();
+        cache.insert(domain.to_string(), DnsCacheEntry {
+            ips: ips.clone(),
+            timestamp: Instant::now(),
+        });
+    }
+    
+    Ok(ips)
 }
 
 /// 使用系统 DNS 解析
