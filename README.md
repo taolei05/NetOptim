@@ -6,6 +6,8 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/badge/version-0.4.0-orange)
 
+📖 **文档**：[NetOptim 完全指南](https://taolei.net/articles/05-netoptim_article)
+
 ## 功能特性
 
 - **智能 DNS 解析** - 支持多 DNS 服务器并行查询，包括 DoH (DNS over HTTPS)
@@ -81,6 +83,44 @@ bun run tauri:build
 - **前端**: React 19 + TypeScript + Radix UI + i18next
 - **后端**: Rust + Tauri 2
 - **构建**: Vite + Bun
+
+## 项目结构
+
+```
+NetOptim/
+├── src/                        # 前端源码
+│   ├── App.tsx                 # 主应用组件
+│   ├── App.css                 # 样式文件
+│   ├── types.ts                # TypeScript 类型定义
+│   ├── ThemeContext.tsx        # 主题上下文
+│   ├── ThemeWrapper.tsx        # 主题包装器
+│   ├── i18n/                   # 国际化
+│   │   └── index.ts            # i18n 配置
+│   ├── main.tsx                # 入口文件
+│   └── vite-env.d.ts           # Vite 类型声明
+├── src-tauri/                  # 后端 Rust 源码
+│   ├── src/
+│   │   ├── lib.rs              # 主模块，Tauri 命令
+│   │   ├── main.rs             # 程序入口
+│   │   ├── dns.rs              # DNS 解析模块
+│   │   ├── ping.rs             # Ping 测速模块
+│   │   ├── hosts.rs            # Hosts 文件管理
+│   │   ├── history.rs          # 历史记录模块
+│   │   ├── presets.rs          # 预设管理模块
+│   │   ├── scheduler.rs        # 定时任务模块
+│   │   ├── ipinfo.rs           # IP 信息查询
+│   │   └── i18n.rs             # 设置管理
+│   ├── icons/                  # 应用图标
+│   ├── capabilities/           # Tauri 权限配置
+│   ├── Cargo.toml              # Rust 依赖配置
+│   └── tauri.conf.json         # Tauri 配置
+├── public/                     # 静态资源
+├── screenshots/                # 应用截图
+├── package.json                # 前端依赖配置
+├── vite.config.ts              # Vite 配置
+├── tsconfig.json               # TypeScript 配置
+└── README.md
+```
 
 ## 使用说明
 
