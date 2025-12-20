@@ -390,6 +390,11 @@ fn save_scheduler_config(config: scheduler::SchedulerConfig) -> Result<(), AppEr
     scheduler::save_scheduler_config(&config)
 }
 
+#[tauri::command]
+async fn get_scheduler_state() -> scheduler::SchedulerState {
+    scheduler::get_scheduler_state().await
+}
+
 // ==================== 设置 ====================
 
 #[tauri::command]
@@ -589,6 +594,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
+            // 启动定时调度器
+            scheduler::start_scheduler();
+            
             // 创建系统托盘
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
@@ -661,6 +669,7 @@ pub fn run() {
             // 定时任务
             get_scheduler_config,
             save_scheduler_config,
+            get_scheduler_state,
             // 设置
             get_settings,
             save_settings,

@@ -157,8 +157,18 @@ pub async fn get_ip_locations_batch(ips: &[String], lang: &str) -> HashMap<Strin
         .collect();
 
     for task in tasks {
-        if let Ok((ip, Some(location))) = task.await {
-            results.insert(ip, location);
+        match task.await {
+            Ok((ip, Some(location))) => {
+                results.insert(ip, location);
+            }
+            Ok((ip, None)) => {
+                // IP 位置查询返回空，记录日志但不插入结果
+                crate::logger::log_warning("ipinfo", &format!("无法获取 IP {} 的位置信息", ip));
+            }
+            Err(e) => {
+                // 任务执行失败，记录错误日志
+                crate::logger::log_error("ipinfo", &format!("批量获取 IP 位置时任务失败: {}", e), None);
+            }
         }
     }
 

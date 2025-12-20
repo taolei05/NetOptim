@@ -39,6 +39,13 @@ export interface SchedulerConfig {
   notify: boolean;
 }
 
+export interface SchedulerState {
+  config: SchedulerConfig;
+  last_run: string | null;
+  next_run: string | null;
+  is_running: boolean;
+}
+
 export interface AppSettings {
   language: "zh-CN" | "en-US";
   minimize_to_tray: boolean;

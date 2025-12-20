@@ -135,34 +135,54 @@ async fn resolve_with_nslookup(domain: &str, dns_server: &str) -> Result<Vec<IpA
     .map_err(|e| AppError::DnsError(e.to_string()))?
 }
 
-/// 使用 DNS over HTTPS 解析
+/// 使用 DNS over HTTPS 解析（同时查询 IPv4 和 IPv6）
 async fn resolve_with_doh(domain: &str, doh_server: &str) -> Result<Vec<IpAddr>, AppError> {
     let client = Client::builder()
         .timeout(Duration::from_secs(5))
         .build()
         .map_err(|e| AppError::DnsError(e.to_string()))?;
 
-    let url = format!("{}?name={}&type=A", doh_server, domain);
+    let mut ips = Vec::new();
 
-    let response = client
-        .get(&url)
+    // 查询 A 记录 (IPv4)
+    let url_a = format!("{}?name={}&type=A", doh_server, domain);
+    if let Ok(response) = client
+        .get(&url_a)
         .header("Accept", "application/dns-json")
         .send()
         .await
-        .map_err(|e| AppError::DnsError(e.to_string()))?;
+    {
+        if let Ok(doh_response) = response.json::<DohResponse>().await {
+            if let Some(answers) = doh_response.answer {
+                for answer in answers {
+                    // type 1 = A record (IPv4)
+                    if answer.record_type == 1 {
+                        if let Ok(ip) = answer.data.parse::<IpAddr>() {
+                            ips.push(ip);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-    let doh_response: DohResponse = response
-        .json()
+    // 查询 AAAA 记录 (IPv6)
+    let url_aaaa = format!("{}?name={}&type=AAAA", doh_server, domain);
+    if let Ok(response) = client
+        .get(&url_aaaa)
+        .header("Accept", "application/dns-json")
+        .send()
         .await
-        .map_err(|e| AppError::DnsError(e.to_string()))?;
-
-    let mut ips = Vec::new();
-    if let Some(answers) = doh_response.answer {
-        for answer in answers {
-            // type 1 = A record (IPv4)
-            if answer.record_type == 1 {
-                if let Ok(ip) = answer.data.parse::<IpAddr>() {
-                    ips.push(ip);
+    {
+        if let Ok(doh_response) = response.json::<DohResponse>().await {
+            if let Some(answers) = doh_response.answer {
+                for answer in answers {
+                    // type 28 = AAAA record (IPv6)
+                    if answer.record_type == 28 {
+                        if let Ok(ip) = answer.data.parse::<IpAddr>() {
+                            ips.push(ip);
+                        }
+                    }
                 }
             }
         }

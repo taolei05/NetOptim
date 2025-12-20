@@ -10,7 +10,9 @@ const MAX_BACKUPS: usize = 10;
 pub struct HostsBackup {
     pub id: String,
     pub timestamp: DateTime<Utc>,
-    pub content: String,
+    #[serde(skip_serializing, default)]
+    #[allow(dead_code)]
+    pub content: String, // 不再序列化到索引文件，只从备份文件读取
     pub description: Option<String>,
 }
 
@@ -80,7 +82,7 @@ pub fn create_backup(description: Option<&str>) -> Result<HostsBackup, AppError>
     let backup = HostsBackup {
         id: uuid::Uuid::new_v4().to_string(),
         timestamp: Utc::now(),
-        content: content.clone(),
+        content: String::new(), // 内容存储在单独文件中，不再重复存储
         description: description.map(|s| s.to_string()),
     };
     
