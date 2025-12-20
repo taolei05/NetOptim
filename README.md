@@ -4,7 +4,7 @@
 
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-1.1.1-orange)
+![Version](https://img.shields.io/badge/version-1.3.0-orange)
 
 📖 **文档**：[NetOptim 完全指南](https://taolei.net/articles/05-netoptim_article)
 
@@ -117,7 +117,15 @@ bun run tauri:build
 ```
 NetOptim/
 ├── src/                        # 前端源码
-│   ├── App.tsx                 # 主应用组件
+│   ├── components/             # 页面组件
+│   │   ├── OptimizePage.tsx    # IP 优选
+│   │   ├── HostsPage.tsx       # Hosts 管理
+│   │   ├── MonitorPage.tsx     # 网络监控
+│   │   ├── DiagnosticPage.tsx  # 网络诊断
+│   │   ├── RulesPage.tsx       # 规则管理
+│   │   ├── HistoryPage.tsx     # 历史记录
+│   │   └── SettingsPage.tsx    # 设置
+│   ├── App.tsx                 # 主应用入口
 │   ├── App.css                 # 样式文件
 │   ├── types.ts                # TypeScript 类型定义
 │   ├── ThemeContext.tsx        # 主题上下文
