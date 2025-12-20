@@ -7,13 +7,19 @@ use tauri::{
 };
 use thiserror::Error;
 
+mod backup;
+mod blacklist;
+mod diagnostic;
 mod dns;
 mod history;
 mod hosts;
 mod i18n;
 mod ipinfo;
+mod logger;
+mod monitor;
 mod ping;
 mod presets;
+mod rules;
 mod scheduler;
 
 #[derive(Error, Debug)]
@@ -92,8 +98,21 @@ async fn resolve_and_ping(domain: String, lang: Option<String>) -> Result<Resolv
         return Err(AppError::DnsError("未找到任何 IP 地址".to_string()));
     }
 
+    // 过滤黑名单 IP
+    let blacklisted = blacklist::get_blacklisted_ips();
+    let filtered_ips: Vec<_> = ips.into_iter()
+        .filter(|ip| !blacklisted.contains(&ip.to_string()))
+        .collect();
+
+    if filtered_ips.is_empty() {
+        return Err(AppError::DnsError("所有 IP 都在黑名单中".to_string()));
+    }
+
+    // 记录日志
+    logger::log_info("dns", &format!("解析域名 {} 获取到 {} 个 IP", domain, filtered_ips.len()));
+
     // 并行 Ping
-    let mut results = ping::ping_ips_parallel(ips).await;
+    let mut results = ping::ping_ips_parallel(filtered_ips).await;
 
     // 检测 CDN 和获取地理位置
     let ip_strings: Vec<String> = results.iter().map(|r| r.ip.clone()).collect();
@@ -395,6 +414,173 @@ fn detect_cdn(ip: String) -> Option<String> {
     ipinfo::detect_cdn(&ip)
 }
 
+// ==================== IP 黑名单 ====================
+
+#[tauri::command]
+fn get_blacklist() -> blacklist::Blacklist {
+    blacklist::load_blacklist()
+}
+
+#[tauri::command]
+fn add_to_blacklist(ip: String, domain: Option<String>, reason: Option<String>) -> Result<(), AppError> {
+    blacklist::add_to_blacklist(&ip, domain.as_deref(), reason.as_deref())
+}
+
+#[tauri::command]
+fn remove_from_blacklist(ip: String) -> Result<(), AppError> {
+    blacklist::remove_from_blacklist(&ip)
+}
+
+// ==================== 网络监控 ====================
+
+#[tauri::command]
+fn get_monitor_config() -> monitor::MonitorConfig {
+    monitor::load_monitor_config()
+}
+
+#[tauri::command]
+async fn save_monitor_config(config: monitor::MonitorConfig) -> Result<(), AppError> {
+    monitor::update_monitor_config(config).await
+}
+
+#[tauri::command]
+async fn add_to_monitor(domain: String, ip: String, baseline_latency: Option<u64>) {
+    monitor::add_domain_to_monitor(&domain, &ip, baseline_latency).await
+}
+
+#[tauri::command]
+async fn remove_from_monitor(domain: String) {
+    monitor::remove_domain_from_monitor(&domain).await
+}
+
+#[tauri::command]
+async fn get_monitor_state() -> monitor::MonitorState {
+    monitor::get_monitor_state().await
+}
+
+#[tauri::command]
+async fn check_monitored_domain(domain: String) -> Result<monitor::MonitorRecord, AppError> {
+    monitor::check_domain(&domain).await
+}
+
+#[tauri::command]
+async fn check_all_monitored_domains() -> Vec<(String, monitor::MonitorRecord)> {
+    monitor::check_all_domains().await
+}
+
+// ==================== 备份恢复 ====================
+
+#[tauri::command]
+fn get_backups() -> backup::BackupList {
+    backup::load_backup_list()
+}
+
+#[tauri::command]
+fn create_backup(description: Option<String>) -> Result<backup::HostsBackup, AppError> {
+    backup::create_backup(description.as_deref())
+}
+
+#[tauri::command]
+fn restore_backup(backup_id: String) -> Result<(), AppError> {
+    backup::restore_backup(&backup_id)
+}
+
+#[tauri::command]
+fn delete_backup(backup_id: String) -> Result<(), AppError> {
+    backup::delete_backup(&backup_id)
+}
+
+#[tauri::command]
+fn get_backup_content(backup_id: String) -> Result<String, AppError> {
+    backup::get_backup_content(&backup_id)
+}
+
+// ==================== 网络诊断 ====================
+
+#[tauri::command]
+async fn run_traceroute(target: String, max_hops: Option<u32>) -> Result<diagnostic::TracerouteResult, AppError> {
+    diagnostic::traceroute(&target, max_hops.unwrap_or(15)).await
+}
+
+#[tauri::command]
+async fn run_dns_query(domain: String, dns_server: Option<String>) -> Result<diagnostic::DnsQueryResult, AppError> {
+    diagnostic::dns_query(&domain, dns_server.as_deref()).await
+}
+
+#[tauri::command]
+async fn run_ping_diagnostic(target: String, count: Option<u32>) -> Result<diagnostic::PingDiagResult, AppError> {
+    diagnostic::ping_diagnostic(&target, count.unwrap_or(4)).await
+}
+
+#[tauri::command]
+async fn run_http_diagnostic(url: String) -> Result<diagnostic::HttpDiagResult, AppError> {
+    diagnostic::http_diagnostic(&url).await
+}
+
+#[tauri::command]
+async fn run_full_diagnostic(target: String) -> Result<diagnostic::NetworkDiagnostic, AppError> {
+    diagnostic::full_diagnostic(&target).await
+}
+
+// ==================== 日志系统 ====================
+
+#[tauri::command]
+fn get_logs(lines: Option<usize>) -> Vec<String> {
+    logger::read_logs(lines)
+}
+
+#[tauri::command]
+fn clear_logs() {
+    logger::clear_logs()
+}
+
+#[tauri::command]
+fn get_log_files() -> Vec<(String, u64)> {
+    logger::get_log_files()
+}
+
+// ==================== 规则管理 ====================
+
+#[tauri::command]
+fn get_rule_config() -> rules::RuleConfig {
+    rules::load_rule_config()
+}
+
+#[tauri::command]
+fn save_rule_config(config: rules::RuleConfig) -> Result<(), AppError> {
+    rules::save_rule_config(&config)
+}
+
+#[tauri::command]
+fn add_rule_source(name: String, url: String) -> Result<rules::RuleSource, AppError> {
+    rules::add_rule_source(&name, &url)
+}
+
+#[tauri::command]
+fn remove_rule_source(id: String) -> Result<(), AppError> {
+    rules::remove_rule_source(&id)
+}
+
+#[tauri::command]
+fn toggle_rule_source(id: String, enabled: bool) -> Result<(), AppError> {
+    rules::toggle_rule_source(&id, enabled)
+}
+
+#[tauri::command]
+async fn update_rule_source(id: String) -> Result<usize, AppError> {
+    rules::update_rule_source(&id).await
+}
+
+#[tauri::command]
+async fn update_all_rules() -> Result<std::collections::HashMap<String, usize>, AppError> {
+    rules::update_all_rules().await
+}
+
+#[tauri::command]
+fn get_all_rules() -> Vec<rules::ParsedRule> {
+    rules::get_all_rules()
+}
+
 // ==================== 应用入口 ====================
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -481,6 +667,43 @@ pub fn run() {
             // IP 信息
             get_ip_location,
             detect_cdn,
+            // IP 黑名单
+            get_blacklist,
+            add_to_blacklist,
+            remove_from_blacklist,
+            // 网络监控
+            get_monitor_config,
+            save_monitor_config,
+            add_to_monitor,
+            remove_from_monitor,
+            get_monitor_state,
+            check_monitored_domain,
+            check_all_monitored_domains,
+            // 备份恢复
+            get_backups,
+            create_backup,
+            restore_backup,
+            delete_backup,
+            get_backup_content,
+            // 网络诊断
+            run_traceroute,
+            run_dns_query,
+            run_ping_diagnostic,
+            run_http_diagnostic,
+            run_full_diagnostic,
+            // 日志系统
+            get_logs,
+            clear_logs,
+            get_log_files,
+            // 规则管理
+            get_rule_config,
+            save_rule_config,
+            add_rule_source,
+            remove_rule_source,
+            toggle_rule_source,
+            update_rule_source,
+            update_all_rules,
+            get_all_rules,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

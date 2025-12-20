@@ -122,6 +122,106 @@ const resources = {
       // 提示
       tip_main: "点击左侧常用域名快速查询，选择延迟最低的 IP 写入 hosts 文件",
       tip_batch: "一键优化将对所有预设域名进行解析并写入最优 IP",
+
+      // 新增导航
+      nav_monitor: "网络监控",
+      nav_diagnostic: "网络诊断",
+      nav_rules: "规则管理",
+
+      // 黑名单
+      blacklist: "IP 黑名单",
+      add_to_blacklist: "加入黑名单",
+      remove_from_blacklist: "移出黑名单",
+      blacklist_reason: "原因",
+      no_blacklist: "暂无黑名单",
+      blacklist_added: "已加入黑名单",
+
+      // 网络监控
+      monitor: "网络监控",
+      monitor_enabled: "启用监控",
+      monitor_interval: "检测间隔（秒）",
+      monitor_warning_threshold: "警告阈值（%）",
+      monitor_critical_threshold: "严重阈值（ms）",
+      monitor_auto_reoptimize: "自动重新优选",
+      add_to_monitor: "添加监控",
+      remove_from_monitor: "移除监控",
+      no_monitored_domains: "暂无监控域名",
+      check_now: "立即检测",
+      check_all: "检测全部",
+      status_good: "正常",
+      status_warning: "警告",
+      status_critical: "严重",
+      status_timeout: "超时",
+      baseline_latency: "基准延迟",
+      current_latency: "当前延迟",
+      last_check: "上次检测",
+
+      // 备份恢复
+      backup: "备份",
+      restore: "恢复",
+      create_backup: "创建备份",
+      restore_backup: "恢复备份",
+      delete_backup: "删除备份",
+      backup_description: "备份描述",
+      no_backups: "暂无备份",
+      backup_created: "备份已创建",
+      backup_restored: "备份已恢复",
+      view_content: "查看内容",
+
+      // 网络诊断
+      diagnostic: "网络诊断",
+      traceroute: "路由追踪",
+      dns_query: "DNS 查询",
+      ping_test: "Ping 测试",
+      http_test: "HTTP 测试",
+      full_diagnostic: "完整诊断",
+      run_diagnostic: "运行诊断",
+      target_input: "输入目标地址",
+      dns_server: "DNS 服务器",
+      max_hops: "最大跳数",
+      ping_count: "Ping 次数",
+      packets_sent: "发送包数",
+      packets_received: "接收包数",
+      packet_loss: "丢包率",
+      min_latency: "最小延迟",
+      avg_latency: "平均延迟",
+      max_latency: "最大延迟",
+      hop: "跳",
+      response_time: "响应时间",
+      status_code: "状态码",
+
+      // 规则管理
+      rules: "规则管理",
+      rule_sources: "规则源",
+      add_rule_source: "添加规则源",
+      remove_rule_source: "删除规则源",
+      rule_name: "名称",
+      rule_url: "URL",
+      update_rules: "更新规则",
+      update_all_rules: "更新全部",
+      auto_update_rules: "自动更新",
+      update_interval: "更新间隔（小时）",
+      last_updated: "上次更新",
+      entry_count: "条目数",
+      no_rule_sources: "暂无规则源",
+      rules_updated: "规则已更新",
+      view_rules: "查看规则",
+
+      // 日志
+      logs: "日志",
+      view_logs: "查看日志",
+      clear_logs: "清空日志",
+      no_logs: "暂无日志",
+      log_files: "日志文件",
+
+      // 代理检测
+      check_proxy: "检测代理",
+      proxy_needed: "需要代理",
+      proxy_not_needed: "无需代理",
+
+      // IP 详情
+      ip_details: "IP 详情",
+      cdn_provider: "CDN 提供商",
     },
   },
   "en-US": {
@@ -245,10 +345,109 @@ const resources = {
       tip_main:
         "Click preset domains to query, select the lowest latency IP to write to hosts",
       tip_batch: "Batch optimize will resolve all preset domains and write the best IPs",
+
+      // New Navigation
+      nav_monitor: "Monitor",
+      nav_diagnostic: "Diagnostic",
+      nav_rules: "Rules",
+
+      // Blacklist
+      blacklist: "IP Blacklist",
+      add_to_blacklist: "Add to Blacklist",
+      remove_from_blacklist: "Remove from Blacklist",
+      blacklist_reason: "Reason",
+      no_blacklist: "No blacklisted IPs",
+      blacklist_added: "Added to blacklist",
+
+      // Network Monitor
+      monitor: "Network Monitor",
+      monitor_enabled: "Enable Monitor",
+      monitor_interval: "Check Interval (seconds)",
+      monitor_warning_threshold: "Warning Threshold (%)",
+      monitor_critical_threshold: "Critical Threshold (ms)",
+      monitor_auto_reoptimize: "Auto Re-optimize",
+      add_to_monitor: "Add to Monitor",
+      remove_from_monitor: "Remove from Monitor",
+      no_monitored_domains: "No monitored domains",
+      check_now: "Check Now",
+      check_all: "Check All",
+      status_good: "Good",
+      status_warning: "Warning",
+      status_critical: "Critical",
+      status_timeout: "Timeout",
+      baseline_latency: "Baseline Latency",
+      current_latency: "Current Latency",
+      last_check: "Last Check",
+
+      // Backup & Restore
+      backup: "Backup",
+      restore: "Restore",
+      create_backup: "Create Backup",
+      restore_backup: "Restore Backup",
+      delete_backup: "Delete Backup",
+      backup_description: "Description",
+      no_backups: "No backups",
+      backup_created: "Backup created",
+      backup_restored: "Backup restored",
+      view_content: "View Content",
+
+      // Network Diagnostic
+      diagnostic: "Diagnostic",
+      traceroute: "Traceroute",
+      dns_query: "DNS Query",
+      ping_test: "Ping Test",
+      http_test: "HTTP Test",
+      full_diagnostic: "Full Diagnostic",
+      run_diagnostic: "Run Diagnostic",
+      target_input: "Enter target address",
+      dns_server: "DNS Server",
+      max_hops: "Max Hops",
+      ping_count: "Ping Count",
+      packets_sent: "Packets Sent",
+      packets_received: "Packets Received",
+      packet_loss: "Packet Loss",
+      min_latency: "Min Latency",
+      avg_latency: "Avg Latency",
+      max_latency: "Max Latency",
+      hop: "Hop",
+      response_time: "Response Time",
+      status_code: "Status Code",
+
+      // Rules Management
+      rules: "Rules",
+      rule_sources: "Rule Sources",
+      add_rule_source: "Add Rule Source",
+      remove_rule_source: "Remove Rule Source",
+      rule_name: "Name",
+      rule_url: "URL",
+      update_rules: "Update Rules",
+      update_all_rules: "Update All",
+      auto_update_rules: "Auto Update",
+      update_interval: "Update Interval (hours)",
+      last_updated: "Last Updated",
+      entry_count: "Entries",
+      no_rule_sources: "No rule sources",
+      rules_updated: "Rules updated",
+      view_rules: "View Rules",
+
+      // Logs
+      logs: "Logs",
+      view_logs: "View Logs",
+      clear_logs: "Clear Logs",
+      no_logs: "No logs",
+      log_files: "Log Files",
+
+      // Proxy Detection
+      check_proxy: "Check Proxy",
+      proxy_needed: "Proxy Required",
+      proxy_not_needed: "No Proxy Needed",
+
+      // IP Details
+      ip_details: "IP Details",
+      cdn_provider: "CDN Provider",
     },
   },
 };
-
 i18n.use(initReactI18next).init({
   resources,
   lng: "zh-CN",

@@ -4,21 +4,49 @@
 
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-0.4.0-orange)
+![Version](https://img.shields.io/badge/version-1.0.0-orange)
 
 📖 **文档**：[NetOptim 完全指南](https://taolei.net/articles/05-netoptim_article)
 
 ## 功能特性
 
+### 核心功能
 - **智能 DNS 解析** - 支持多 DNS 服务器并行查询，包括 DoH (DNS over HTTPS)
 - **IP 测速优选** - 并行 ping 测试，自动选择延迟最低的 IP
 - **Hosts 管理** - 可视化管理 hosts 文件，支持启用/禁用条目
 - **预设配置** - 内置常用域名预设（GitHub、Google、Cloudflare 等），支持自定义
-- **历史记录** - 记录每次优选结果，方便回溯
 - **批量优选** - 一键优化多个域名
+- **历史记录** - 记录每次优选结果，方便回溯
+
+### 网络监控
+- **实时监控** - 持续追踪已优化域名的延迟变化
+- **自动告警** - 网络质量下降时自动提醒
+- **自动重优选** - 可配置自动重新优选功能
+
+### 网络诊断
+- **Ping 测试** - 测试目标主机连通性和延迟
+- **DNS 查询** - 查询域名的 DNS 记录
+- **路由追踪** - Traceroute 分析网络路径
+- **HTTP 诊断** - 测试 HTTP/HTTPS 连接状态
+
+### 规则管理
+- **规则源订阅** - 支持从 URL 导入第三方 hosts 规则
+- **自动更新** - 定时自动更新规则源
+- **规则合并** - 与优选结果智能合并
+
+### 备份恢复
+- **自动备份** - hosts 文件自动备份
+- **一键恢复** - 支持恢复到之前的状态
+- **备份管理** - 查看和管理所有备份
+
+### 其他功能
+- **IP 黑名单** - 标记不可用 IP，优选时自动排除
+- **定时任务** - 后台定时自动执行优选
+- **日志系统** - 详细的操作日志，便于问题排查
 - **导入导出** - 支持 hosts 规则的导入导出
 - **多语言** - 支持中文和英文界面
 - **主题切换** - 支持亮色/暗色主题，跟随系统设置
+- **系统托盘** - 最小化到托盘运行
 
 ## 截图
 
@@ -109,7 +137,13 @@ NetOptim/
 │   │   ├── presets.rs          # 预设管理模块
 │   │   ├── scheduler.rs        # 定时任务模块
 │   │   ├── ipinfo.rs           # IP 信息查询
-│   │   └── i18n.rs             # 设置管理
+│   │   ├── i18n.rs             # 设置管理
+│   │   ├── monitor.rs          # 网络监控模块
+│   │   ├── diagnostic.rs       # 网络诊断模块
+│   │   ├── blacklist.rs        # IP 黑名单模块
+│   │   ├── backup.rs           # 备份恢复模块
+│   │   ├── rules.rs            # 规则管理模块
+│   │   └── logger.rs           # 日志系统模块
 │   ├── icons/                  # 应用图标
 │   ├── capabilities/           # Tauri 权限配置
 │   ├── Cargo.toml              # Rust 依赖配置
@@ -127,7 +161,10 @@ NetOptim/
 1. **IP 优选**: 在主界面输入域名或选择预设，点击"开始优选"
 2. **应用结果**: 优选完成后点击"应用到 Hosts"写入系统 hosts 文件
 3. **Hosts 管理**: 在 Hosts 标签页查看和管理所有 hosts 条目
-4. **历史记录**: 在历史标签页查看之前的优选记录
+4. **网络监控**: 在监控标签页添加域名进行实时延迟监控
+5. **网络诊断**: 使用诊断工具排查网络问题（Ping、DNS、Traceroute、HTTP）
+6. **规则管理**: 添加第三方 hosts 规则源，自动更新和合并
+7. **历史记录**: 在历史标签页查看之前的优选记录
 
 ## 注意事项
 

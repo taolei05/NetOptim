@@ -14,6 +14,26 @@ html, body, #root {
   padding: 0;
 }
 
+/* Radix Theme 深色模式 */
+.dark {
+  background-color: #111113 !important;
+}
+
+.dark body,
+.dark #root {
+  background-color: #111113;
+}
+
+/* Radix Theme 浅色模式 */
+.light {
+  background-color: #ffffff !important;
+}
+
+.light body,
+.light #root {
+  background-color: #ffffff;
+}
+
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
   width: 6px;

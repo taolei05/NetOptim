@@ -5,6 +5,17 @@
     <link rel="icon" type="image/png" href="/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NetOptim</title>
+    <style>
+      /* 防止深色模式下出现白色闪烁 */
+      html, body {
+        background-color: #111113;
+      }
+      @media (prefers-color-scheme: light) {
+        html, body {
+          background-color: #ffffff;
+        }
+      }
+    </style>
   </head>
 
   <body>
