@@ -118,14 +118,17 @@ pub fn log_info(module: &str, message: &str) {
     log(LogLevel::Info, module, message, None);
 }
 
+#[allow(dead_code)]
 pub fn log_error(module: &str, message: &str, details: Option<&str>) {
     log(LogLevel::Error, module, message, details);
 }
 
+#[allow(dead_code)]
 pub fn log_warning(module: &str, message: &str) {
     log(LogLevel::Warning, module, message, None);
 }
 
+#[allow(dead_code)]
 pub fn log_debug(module: &str, message: &str) {
     log(LogLevel::Debug, module, message, None);
 }

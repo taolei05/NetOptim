@@ -262,6 +262,7 @@ pub fn get_all_rules() -> Vec<ParsedRule> {
 }
 
 /// 合并规则到 hosts（返回合并后的条目）
+#[allow(dead_code)]
 pub fn merge_rules_with_hosts(optimized: &[(String, String)]) -> Vec<(String, String)> {
     let mut result: HashMap<String, String> = HashMap::new();
     

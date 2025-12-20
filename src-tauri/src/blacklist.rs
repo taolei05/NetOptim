@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlacklistEntry {
@@ -17,6 +18,11 @@ pub struct Blacklist {
     pub entries: Vec<BlacklistEntry>,
 }
 
+// 缓存黑名单数据
+lazy_static::lazy_static! {
+    static ref BLACKLIST_CACHE: RwLock<Option<Blacklist>> = RwLock::new(None);
+}
+
 fn get_blacklist_path() -> PathBuf {
     if let Some(config_dir) = dirs::config_dir() {
         let app_dir = config_dir.join("netoptim");
@@ -29,16 +35,39 @@ fn get_blacklist_path() -> PathBuf {
     }
 }
 
+#[allow(dead_code)]
+fn invalidate_cache() {
+    if let Ok(mut cache) = BLACKLIST_CACHE.write() {
+        *cache = None;
+    }
+}
+
 pub fn load_blacklist() -> Blacklist {
-    let path = get_blacklist_path();
-    if path.exists() {
-        if let Ok(content) = fs::read_to_string(&path) {
-            if let Ok(blacklist) = serde_json::from_str(&content) {
-                return blacklist;
-            }
+    // 先检查缓存
+    if let Ok(cache) = BLACKLIST_CACHE.read() {
+        if let Some(ref blacklist) = *cache {
+            return blacklist.clone();
         }
     }
-    Blacklist::default()
+    
+    // 从文件加载
+    let path = get_blacklist_path();
+    let blacklist = if path.exists() {
+        if let Ok(content) = fs::read_to_string(&path) {
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            Blacklist::default()
+        }
+    } else {
+        Blacklist::default()
+    };
+    
+    // 更新缓存
+    if let Ok(mut cache) = BLACKLIST_CACHE.write() {
+        *cache = Some(blacklist.clone());
+    }
+    
+    blacklist
 }
 
 pub fn save_blacklist(blacklist: &Blacklist) -> Result<(), AppError> {
@@ -49,6 +78,12 @@ pub fn save_blacklist(blacklist: &Blacklist) -> Result<(), AppError> {
     let content = serde_json::to_string_pretty(blacklist)
         .map_err(|e| AppError::Other(format!("序列化失败: {}", e)))?;
     fs::write(&path, content)?;
+    
+    // 更新缓存
+    if let Ok(mut cache) = BLACKLIST_CACHE.write() {
+        *cache = Some(blacklist.clone());
+    }
+    
     Ok(())
 }
 
@@ -76,17 +111,7 @@ pub fn remove_from_blacklist(ip: &str) -> Result<(), AppError> {
     save_blacklist(&blacklist)
 }
 
-pub fn is_blacklisted(ip: &str) -> bool {
-    let blacklist = load_blacklist();
-    blacklist.entries.iter().any(|e| e.ip == ip)
-}
-
 pub fn get_blacklisted_ips() -> HashSet<String> {
     let blacklist = load_blacklist();
     blacklist.entries.iter().map(|e| e.ip.clone()).collect()
-}
-
-pub fn filter_blacklisted(ips: Vec<String>) -> Vec<String> {
-    let blacklisted = get_blacklisted_ips();
-    ips.into_iter().filter(|ip| !blacklisted.contains(ip)).collect()
 }

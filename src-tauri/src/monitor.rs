@@ -211,6 +211,7 @@ pub async fn check_all_domains() -> Vec<(String, MonitorRecord)> {
 }
 
 /// 获取需要重新优选的域名（网络质量下降的）
+#[allow(dead_code)]
 pub async fn get_domains_needing_reoptimize() -> Vec<String> {
     let state = MONITOR_STATE.read().await;
     state.domains
@@ -221,6 +222,7 @@ pub async fn get_domains_needing_reoptimize() -> Vec<String> {
 }
 
 /// 重置警报状态
+#[allow(dead_code)]
 pub async fn reset_alert(domain: &str) {
     let mut state = MONITOR_STATE.write().await;
     if let Some(monitor) = state.domains.get_mut(domain) {
@@ -237,6 +239,7 @@ pub async fn update_monitor_config(config: MonitorConfig) -> Result<(), AppError
 }
 
 /// 获取域名的监控历史
+#[allow(dead_code)]
 pub async fn get_domain_history(domain: &str) -> Option<Vec<MonitorRecord>> {
     let state = MONITOR_STATE.read().await;
     state.domains.get(domain).map(|m| m.records.clone())

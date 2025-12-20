@@ -79,7 +79,6 @@ pub async fn traceroute(target: &str, max_hops: u32) -> Result<TracerouteResult,
         let stdout = String::from_utf8_lossy(&output.stdout);
         
         let mut hops = Vec::new();
-        let mut hop_num = 0u32;
         
         for line in stdout.lines() {
             let line = line.trim();
@@ -93,9 +92,7 @@ pub async fn traceroute(target: &str, max_hops: u32) -> Result<TracerouteResult,
                 continue;
             }
             
-            if let Ok(num) = parts[0].parse::<u32>() {
-                hop_num = num;
-                
+            if let Ok(hop_num) = parts[0].parse::<u32>() {
                 // 查找 IP 地址
                 let mut ip = None;
                 let mut hostname = None;
@@ -252,7 +249,7 @@ pub async fn ping_diagnostic(target: &str, count: u32) -> Result<PingDiagResult,
         let output = output.map_err(|e| AppError::Other(format!("执行 ping 失败: {}", e)))?;
         let stdout = String::from_utf8_lossy(&output.stdout);
         
-        let mut packets_sent = count;
+        let packets_sent = count;
         let mut packets_received = 0u32;
         let mut min_latency = None;
         let mut avg_latency = None;

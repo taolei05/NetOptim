@@ -50,12 +50,12 @@ pub fn write_host_entry(domain: &str, ip: &str) -> Result<(), AppError> {
 
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
         if parts.len() >= 2 {
-            // 检查是否是同一个域名
-            let existing_domain = parts.last().unwrap_or(&"");
-            if *existing_domain != domain {
+            // 检查所有域名是否包含目标域名
+            let domains = &parts[1..];
+            if !domains.contains(&domain) {
                 new_lines.push(line.to_string());
             }
-            // 如果是同一个域名，跳过（不添加到 new_lines）
+            // 如果包含目标域名，跳过整行（不添加到 new_lines）
         } else {
             new_lines.push(line.to_string());
         }
@@ -218,10 +218,12 @@ pub fn remove_host_entry(domain: &str) -> Result<(), AppError> {
 
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
         if parts.len() >= 2 {
-            let existing_domain = parts.last().unwrap_or(&"");
-            if *existing_domain != domain {
+            // 检查所有域名是否包含目标域名
+            let domains = &parts[1..];
+            if !domains.contains(&domain) {
                 new_lines.push(line.to_string());
             }
+            // 如果包含目标域名，跳过整行
         } else {
             new_lines.push(line.to_string());
         }

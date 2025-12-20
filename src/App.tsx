@@ -178,6 +178,9 @@ function App() {
   const [ipDetailsDialogOpen, setIpDetailsDialogOpen] = useState(false);
   const [selectedIpDetails, setSelectedIpDetails] = useState<{ ip: string; location?: string; cdn?: string } | null>(null);
 
+  // Ref for batch optimize to avoid useEffect dependency issues
+  const handleBatchOptimizeRef = useRef<() => void>(() => {});
+
   // Responsive tabs
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [visibleTabCount, setVisibleTabCount] = useState(7);
@@ -223,12 +226,14 @@ function App() {
 
     // Listen for batch optimize trigger from tray
     const unlisten = listen("trigger-batch-optimize", () => {
-      handleBatchOptimize();
+      // 使用 ref 来避免依赖问题
+      handleBatchOptimizeRef.current();
     });
 
     return () => {
       unlisten.then((fn) => fn());
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -385,6 +390,11 @@ function App() {
       setBatchLoading(false);
     }
   }
+
+  // Update ref when handleBatchOptimize changes
+  useEffect(() => {
+    handleBatchOptimizeRef.current = handleBatchOptimize;
+  });
 
   async function handleWriteHosts() {
     if (!selectedIp || !currentDomain) return;

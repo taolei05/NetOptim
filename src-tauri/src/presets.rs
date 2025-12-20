@@ -28,9 +28,13 @@ pub fn load_presets() -> Vec<String> {
         match fs::read_to_string(&path) {
             Ok(content) => match serde_json::from_str(&content) {
                 Ok(presets) => return presets,
-                Err(_) => {}
+                Err(e) => {
+                    eprintln!("解析预设文件失败: {}", e);
+                }
             },
-            Err(_) => {}
+            Err(e) => {
+                eprintln!("读取预设文件失败: {}", e);
+            }
         }
     }
 
